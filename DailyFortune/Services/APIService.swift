@@ -19,8 +19,8 @@ enum APIError: Error, LocalizedError {
             return "收到无效的服务器响应。"
         case .httpError(_, let message):
             return message
-        case .decodingError:
-            return "数据解析失败。"
+        case .decodingError(let error):
+            return "数据解析失败: \(error.localizedDescription)"
         case .unknownError:
             return "发生未知错误。"
         }
@@ -34,14 +34,56 @@ final class APIService {
     private init() {}
 
     // MARK: - Private Properties
-    // --- FIX: 更新为新的API地址 ---
     private let baseURL = URL(string: "https://api.ys.oftx.top")!
     
+    // --- FINAL AND ROBUST FIX START ---
+    // The API returns two slightly different ISO8601 date formats.
+    // One with fractional seconds, and one without. We need a custom
+    // decoder that can handle both gracefully.
+    
+    // Formatter for dates WITH fractional seconds (e.g., "2025-09-30T09:04:08.069000Z")
+    private static let iso8601Fractional: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ"
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    // Formatter for dates WITHOUT fractional seconds (e.g., "2025-09-30T18:00:00Z")
+    private static let iso8601: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
     private let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        // Use a custom decoding strategy
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // Try parsing with the fractional seconds formatter first
+            if let date = APIService.iso8601Fractional.date(from: dateString) {
+                return date
+            }
+            // If that fails, try parsing with the non-fractional formatter
+            if let date = APIService.iso8601.date(from: dateString) {
+                return date
+            }
+            
+            // If both fail, throw an error
+            throw DecodingError.dataCorruptedError(in: container,
+                debugDescription: "Date string does not match any expected ISO8601 format.")
+        }
         return decoder
     }()
+    // --- FINAL AND ROBUST FIX END ---
 
     // MARK: - Generic Request Function
     private func request<T: Decodable>(endpoint: String,
@@ -60,7 +102,8 @@ final class APIService {
 
         if let body {
             let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
+            // When sending data to server, always use the standard with fractional seconds
+            encoder.dateEncodingStrategy = .formatted(APIService.iso8601Fractional)
             request.httpBody = try encoder.encode(body)
         }
 
@@ -72,8 +115,6 @@ final class APIService {
         
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "No error message"
-            print("HTTP Error \(httpResponse.statusCode): \(errorMessage)")
-            
             if let apiError = try? decoder.decode(APIErrorResponse.self, from: data), let detail = apiError.detail {
                  throw APIError.httpError(statusCode: httpResponse.statusCode, message: detail)
             }
@@ -83,7 +124,9 @@ final class APIService {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            print("Decoding Error: \(error)")
+            print("--- Decoding Error ---")
+            print(String(describing: error))
+            print("----------------------")
             throw APIError.decodingError(error)
         }
     }
@@ -104,6 +147,7 @@ final class APIService {
         
         if let body {
             let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .formatted(APIService.iso8601Fractional)
             request.httpBody = try encoder.encode(body)
         }
 
@@ -151,7 +195,14 @@ final class APIService {
             throw APIError.httpError(statusCode: httpResponse.statusCode, message: "登录失败")
         }
         
-        return try decoder.decode(AuthResponse.self, from: data)
+        do {
+            return try decoder.decode(AuthResponse.self, from: data)
+        } catch {
+            print("--- Login Decoding Error ---")
+            print(String(describing: error))
+            print("--------------------------")
+            throw APIError.decodingError(error)
+        }
     }
 
     func register(username: String, email: String, password: String) async throws -> AuthResponse {
@@ -184,7 +235,7 @@ final class APIService {
 
     // MARK: - Fortune Endpoints
     func drawFortune() async throws -> FortuneDrawResponse {
-        try await request(endpoint: "/fortune/draw", method: "POST", auth: true) // 明确标记需要认证
+        try await request(endpoint: "/fortune/draw", method: "POST", auth: true)
     }
     
     func getLeaderboard() async throws -> [LeaderboardGroup] {
