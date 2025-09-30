@@ -2,7 +2,10 @@ import Foundation
 
 // MARK: - User Models
 
-struct UserMeProfile: Codable, Identifiable {
+// --- FIX START ---
+// 添加 Hashable 和 Equatable 以便在视图中更好地进行状态管理
+struct UserMeProfile: Codable, Identifiable, Hashable, Equatable {
+// --- FIX END ---
     let id: String
     let email: String
     let role: String
@@ -37,9 +40,24 @@ struct UserMeProfile: Codable, Identifiable {
         case isHidden = "is_hidden"
         case useQqAvatar = "use_qq_avatar"
     }
+
+    func getDisplayAvatarUrl() -> URL? {
+        if useQqAvatar, let qqNumber = qq {
+            // --- FIX #6 START: 使用HTTPS协议 ---
+            return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640")
+            // --- FIX #6 END ---
+        }
+        if !avatarUrl.isEmpty {
+            return URL(string: avatarUrl)
+        }
+        return nil
+    }
 }
 
-struct UserPublicProfile: Codable, Identifiable {
+// --- FIX START ---
+// 添加 Hashable 和 Equatable
+struct UserPublicProfile: Codable, Identifiable, Hashable, Equatable {
+// --- FIX END ---
     var id: String { username }
     let username: String
     let displayName: String
@@ -70,11 +88,22 @@ struct UserPublicProfile: Codable, Identifiable {
         case isHidden = "is_hidden"
         case useQqAvatar = "use_qq_avatar"
     }
+    
+    func getDisplayAvatarUrl() -> URL? {
+        if useQqAvatar, let qqNumber = qq {
+            // --- FIX #6 START: 使用HTTPS协议 ---
+            return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640")
+            // --- FIX #6 END ---
+        }
+        if !avatarUrl.isEmpty {
+            return URL(string: avatarUrl)
+        }
+        return nil
+    }
 }
-
+// ... (此文件其余部分无变化, 代码省略)
+// ... (此文件其余部分无变化, 代码省略)
 // MARK: - Auth Models
-
-// 用于 /auth/login, /auth/register 的响应模型
 struct AuthResponse: Codable {
     let accessToken: String
     let tokenType: String
@@ -87,8 +116,6 @@ struct AuthResponse: Codable {
     }
 }
 
-// --- FIX START ---
-// 新增：专门用于 /users/me 接口的响应模型
 struct MyProfileResponse: Codable {
     let user: UserMeProfile
     let nextDrawAt: Date?
@@ -98,7 +125,6 @@ struct MyProfileResponse: Codable {
         case nextDrawAt = "next_draw_at"
     }
 }
-// --- FIX END ---
 
 struct RegistrationStatusResponse: Codable {
     let isOpen: Bool
@@ -108,7 +134,6 @@ struct RegistrationStatusResponse: Codable {
 }
 
 // MARK: - Fortune Models
-
 struct FortuneDrawResponse: Codable {
     let fortune: String
     let nextDrawAt: Date?
@@ -149,7 +174,6 @@ struct LeaderboardUser: Codable, Identifiable {
 }
 
 // MARK: - API Error Model
-
 struct APIErrorDetail: Codable {
     let loc: [String]
     let msg: String
@@ -161,7 +185,6 @@ struct APIErrorResponse: Codable {
 }
 
 // MARK: - Update Payloads
-
 struct UserUpdatePayload: Codable {
     var displayName: String? = nil
     var bio: String? = nil

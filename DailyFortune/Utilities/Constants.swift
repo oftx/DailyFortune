@@ -2,15 +2,18 @@ import SwiftUI
 
 struct Constants {
     struct FortuneColors {
+        // --- FIX #4 START ---
+        // 更新颜色以匹配Web前端
         static let colors: [String: Color] = [
             "諭吉": Color(hex: "#eec54bff"),
             "大吉": Color(hex: "#C73E3A"),
-            "吉": Color(hex: "#9cca26ff"),
+            "吉":   Color(hex: "#9cca26ff"),
             "中吉": Color(hex: "#eaaa66ff"),
             "小吉": Color(hex: "#4cd3cfff"),
-            "凶": Color(hex: "#67278F"),
+            "凶":   Color(hex: "#67278F"),
             "大凶": Color(hex: "#1A297E")
         ]
+        // --- FIX #4 END ---
         
         static func color(for fortune: String?) -> Color {
             guard let fortune = fortune, let color = colors[fortune] else {

@@ -34,7 +34,9 @@ final class APIService {
     private init() {}
 
     // MARK: - Private Properties
-    private let baseURL = URL(string: "https://api.ys.oftx.top")! // 重要：请替换为您的后端API地址
+    // --- FIX: 更新为新的API地址 ---
+    private let baseURL = URL(string: "https://api.ys.oftx.top")!
+    
     private let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -72,7 +74,6 @@ final class APIService {
             let errorMessage = String(data: data, encoding: .utf8) ?? "No error message"
             print("HTTP Error \(httpResponse.statusCode): \(errorMessage)")
             
-            // 尝试解析标准的错误格式
             if let apiError = try? decoder.decode(APIErrorResponse.self, from: data), let detail = apiError.detail {
                  throw APIError.httpError(statusCode: httpResponse.statusCode, message: detail)
             }
@@ -160,23 +161,17 @@ final class APIService {
 
     // MARK: - User Endpoints
     
-    // --- FIX START ---
-    // 修改方法签名，使其返回新的、正确的模型
     func getMyProfile() async throws -> MyProfileResponse {
         try await request(endpoint: "/users/me")
     }
-    // --- FIX END ---
     
     func getUserProfile(username: String) async throws -> UserPublicProfile {
         try await request(endpoint: "/users/u/\(username)")
     }
 
-    // --- FIX START ---
-    // 修改方法签名，使其返回 /users/me 接口正确的响应模型 MyProfileResponse
     func updateMyProfile(payload: UserUpdatePayload) async throws -> MyProfileResponse {
         try await request(endpoint: "/users/me", method: "PATCH", body: payload)
     }
-    // --- FIX END ---
     
     func changePassword(current: String, new: String) async throws {
         let body = ["current_password": current, "new_password": new]
@@ -189,7 +184,7 @@ final class APIService {
 
     // MARK: - Fortune Endpoints
     func drawFortune() async throws -> FortuneDrawResponse {
-        try await request(endpoint: "/fortune/draw", method: "POST")
+        try await request(endpoint: "/fortune/draw", method: "POST", auth: true) // 明确标记需要认证
     }
     
     func getLeaderboard() async throws -> [LeaderboardGroup] {

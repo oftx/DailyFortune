@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine // <-- FIX: Added import
+import Combine
 
 @MainActor
 final class LoginViewModel: ObservableObject {
@@ -15,7 +15,6 @@ final class LoginViewModel: ObservableObject {
                 let response = try await APIService.shared.getRegistrationStatus()
                 self.isRegistrationOpen = response.isOpen
             } catch {
-                // 忽略错误，默认为开放
                 self.isRegistrationOpen = true
             }
         }
@@ -57,15 +56,19 @@ struct LoginView: View {
                         SecureField("密码", text: $viewModel.password)
                             .textContentType(.password)
                     }
-                    
-                    if let errorMessage = viewModel.errorMessage {
-                        Section {
-                            Text(errorMessage)
-                                .foregroundColor(.red)
-                        }
-                    }
                 }
-                .frame(height: 200)
+                .frame(height: 150) // 调整高度以适应布局
+                .scrollDisabled(true) // 禁止表单滚动
+                
+                // --- FIX #3 START ---
+                // 将错误信息移出Form，确保完整显示
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding(.horizontal)
+                        .multilineTextAlignment(.center)
+                }
+                // --- FIX #3 END ---
                 
                 Button(action: {
                     viewModel.login(authManager: authManager)

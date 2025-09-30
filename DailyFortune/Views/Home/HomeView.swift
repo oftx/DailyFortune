@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine // <-- FIX: Added import
+import Combine
 
 @MainActor
 final class HomeViewModel: ObservableObject {
@@ -15,8 +15,16 @@ final class HomeViewModel: ObservableObject {
         guard let user = user else { return }
         if user.hasDrawnToday {
             self.fortune = user.todaysFortune
-            // 需要从AuthManager或刷新profile时获取nextDrawAt
-            // 这里暂时留空，因为初始/me不返回
+            // 刷新用户数据以获取倒计时
+            Task {
+                do {
+                    let response = try await APIService.shared.getMyProfile()
+                    self.nextDrawAt = response.nextDrawAt
+                    self.startCountdown()
+                } catch {
+                    print("Failed to get nextDrawAt on load")
+                }
+            }
         }
     }
     
@@ -45,21 +53,29 @@ final class HomeViewModel: ObservableObject {
     }
 
     func drawFortune(authManager: AuthManager) {
-        isLoading = true
         errorMessage = nil
-        Task {
-            do {
-                let response = try await APIService.shared.drawFortune()
-                self.fortune = response.fortune
-                self.nextDrawAt = response.nextDrawAt
-                self.startCountdown()
-                // 刷新用户信息
-                await authManager.fetchCurrentUser()
-            } catch {
-                self.errorMessage = error.localizedDescription
+        
+        // --- FIX #5 START ---
+        if authManager.isAuthenticated {
+            // 已登录用户，调用API
+            isLoading = true
+            Task {
+                do {
+                    let response = try await APIService.shared.drawFortune()
+                    self.fortune = response.fortune
+                    self.nextDrawAt = response.nextDrawAt
+                    self.startCountdown()
+                    await authManager.fetchCurrentUser()
+                } catch {
+                    self.errorMessage = error.localizedDescription
+                }
+                isLoading = false
             }
-            isLoading = false
+        } else {
+            // 未登录用户，本地计算
+            self.fortune = FortuneUtils.drawFortuneLocally()
         }
+        // --- FIX #5 END ---
     }
 }
 
@@ -69,7 +85,6 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            // 背景色
             if let fortune = viewModel.fortune {
                 Constants.FortuneColors.color(for: fortune)
                     .ignoresSafeArea()
@@ -79,16 +94,15 @@ struct HomeView: View {
                     .ignoresSafeArea()
             }
             
-            // 内容
             VStack(spacing: 20) {
                 if let fortune = viewModel.fortune {
-                    Text("你的今日运势是")
+                    Text(authManager.isAuthenticated ? "你的今日运势是" : "今日运势是")
                         .font(.title2)
                     
                     Text(fortune)
                         .font(.system(size: 80, weight: .bold, design: .rounded))
                     
-                    if !viewModel.countdown.isEmpty {
+                    if authManager.isAuthenticated && !viewModel.countdown.isEmpty {
                         Text("距离下次抽取: \(viewModel.countdown)")
                             .font(.headline)
                             .padding()
