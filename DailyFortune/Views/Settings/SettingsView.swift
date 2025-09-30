@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine // <-- FIX: Added import
+import Combine
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -45,8 +45,12 @@ final class SettingsViewModel: ObservableObject {
         
         Task {
             do {
+                // --- FIX START ---
+                // 调用返回 MyProfileResponse 的 updateMyProfile
                 let response = try await APIService.shared.updateMyProfile(payload: payload)
+                // 从响应中提取 user 对象并更新 AuthManager
                 authManager.updateUser(response.user)
+                // --- FIX END ---
                 self.successMessage = "设置已成功保存！"
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -87,6 +91,7 @@ struct SettingsView: View {
                         Text("简体中文").tag("zh")
                         Text("English").tag("en")
                     }
+
                     Picker("时区", selection: $viewModel.timezone) {
                         ForEach(Constants.timezones, id: \.self) { tz in
                             Text(tz).tag(tz)

@@ -159,17 +159,24 @@ final class APIService {
     }
 
     // MARK: - User Endpoints
-    func getMyProfile() async throws -> AuthResponse {
+    
+    // --- FIX START ---
+    // 修改方法签名，使其返回新的、正确的模型
+    func getMyProfile() async throws -> MyProfileResponse {
         try await request(endpoint: "/users/me")
     }
+    // --- FIX END ---
     
     func getUserProfile(username: String) async throws -> UserPublicProfile {
         try await request(endpoint: "/users/u/\(username)")
     }
 
-    func updateMyProfile(payload: UserUpdatePayload) async throws -> AuthResponse {
+    // --- FIX START ---
+    // 修改方法签名，使其返回 /users/me 接口正确的响应模型 MyProfileResponse
+    func updateMyProfile(payload: UserUpdatePayload) async throws -> MyProfileResponse {
         try await request(endpoint: "/users/me", method: "PATCH", body: payload)
     }
+    // --- FIX END ---
     
     func changePassword(current: String, new: String) async throws {
         let body = ["current_password": current, "new_password": new]

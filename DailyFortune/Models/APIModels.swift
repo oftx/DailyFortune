@@ -74,19 +74,31 @@ struct UserPublicProfile: Codable, Identifiable {
 
 // MARK: - Auth Models
 
+// 用于 /auth/login, /auth/register 的响应模型
 struct AuthResponse: Codable {
     let accessToken: String
     let tokenType: String
     let user: UserMeProfile
-    let nextDrawAt: Date?
     
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case tokenType = "token_type"
         case user
+    }
+}
+
+// --- FIX START ---
+// 新增：专门用于 /users/me 接口的响应模型
+struct MyProfileResponse: Codable {
+    let user: UserMeProfile
+    let nextDrawAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case user
         case nextDrawAt = "next_draw_at"
     }
 }
+// --- FIX END ---
 
 struct RegistrationStatusResponse: Codable {
     let isOpen: Bool

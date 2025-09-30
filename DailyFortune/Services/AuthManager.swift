@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-import Combine // <-- FIX: Added import
+import Combine
 
 /// 管理整个应用的认证状态的全局对象。
 @MainActor
@@ -53,8 +53,12 @@ final class AuthManager: ObservableObject {
         }
         
         do {
+            // --- FIX START ---
+            // 调用返回 MyProfileResponse 的 getMyProfile
             let response = try await APIService.shared.getMyProfile()
+            // 从响应中提取 user 对象并更新
             self.currentUser = response.user
+            // --- FIX END ---
         } catch {
             // 如果获取失败（例如token过期），则登出
             print("获取用户信息失败: \(error.localizedDescription)")

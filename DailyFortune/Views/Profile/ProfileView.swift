@@ -1,23 +1,29 @@
 import SwiftUI
 import Kingfisher
-import Combine // <-- FIX: Added import
+import Combine
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
-    @Published var profile: (any Codable)? // UserMeProfile or UserPublicProfile
+    // --- FIX START ---
+    // 修改 profile 类型，确保它始终是 UserMeProfile 或 UserPublicProfile
+    @Published var profile: (any Codable & Identifiable)?
+    // --- FIX END ---
+    
     @Published var history: [FortuneHistoryItem] = []
     @Published var isLoading = true
     @Published var errorMessage: String?
     
     var isMe: Bool { profile is UserMeProfile }
     
-    var userProfile: UserPublicProfile? {
+    // --- FIX START ---
+    // 统一将 profile 转换为 UserPublicProfile 以便视图使用，提供一致的接口
+    var displayableProfile: UserPublicProfile? {
         if let p = profile as? UserMeProfile {
-            // Convert Me to Public for consistent display
             return UserPublicProfile(username: p.username, displayName: p.displayName, bio: p.bio, avatarUrl: p.avatarUrl, backgroundUrl: p.backgroundUrl, registrationDate: p.registrationDate, lastActiveDate: p.lastActiveDate, totalDraws: p.totalDraws, hasDrawnToday: p.hasDrawnToday, todaysFortune: p.todaysFortune, status: p.status, isHidden: p.isHidden, tags: p.tags, qq: p.qq, useQqAvatar: p.useQqAvatar)
         }
         return profile as? UserPublicProfile
     }
+    // --- FIX END ---
 
     func fetchProfile(username: String?, currentUser: UserMeProfile?) {
         let isMyProfile = username == nil
@@ -33,8 +39,12 @@ final class ProfileViewModel: ObservableObject {
         Task {
             do {
                 if isMyProfile {
+                    // --- FIX START ---
+                    // 调用返回 MyProfileResponse 的 getMyProfile
                     let response = try await APIService.shared.getMyProfile()
+                    // 从响应中提取 user 对象
                     self.profile = response.user
+                    // --- FIX END ---
                 } else {
                     self.profile = try await APIService.shared.getUserProfile(username: usernameToFetch)
                 }
@@ -48,7 +58,6 @@ final class ProfileViewModel: ObservableObject {
 }
 
 struct ProfileView: View {
-    // 传入的username，如果为nil，则表示是“我的”页面
     let username: String?
     
     @StateObject private var viewModel = ProfileViewModel()
@@ -61,26 +70,27 @@ struct ProfileView: View {
                     ProgressView("正在加载个人资料...")
                 } else if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
-                } else if let profile = viewModel.userProfile {
+                } else if let profile = viewModel.displayableProfile {
                     ProfileContentView(profile: profile, history: viewModel.history, isMe: viewModel.isMe)
                 } else {
                     Text("未能加载个人资料")
                 }
             }
-            .navigationTitle(username == nil ? "我的资料" : (viewModel.userProfile?.displayName ?? "个人资料"))
+            .navigationTitle(username == nil ? "我的资料" : (viewModel.displayableProfile?.displayName ?? "个人资料"))
             .refreshable {
                 viewModel.fetchProfile(username: username, currentUser: authManager.currentUser)
             }
             .onAppear {
-                // 如果是自己的资料页，确保使用的是最新数据
-                if username == nil {
-                    viewModel.profile = authManager.currentUser
+                // 如果是自己的资料页，并且本地已有数据，先显示
+                if username == nil, let currentUser = authManager.currentUser {
+                    viewModel.profile = currentUser
                 }
                 viewModel.fetchProfile(username: username, currentUser: authManager.currentUser)
             }
         }
     }
 }
+
 
 struct ProfileContentView: View {
     let profile: UserPublicProfile
@@ -93,6 +103,9 @@ struct ProfileContentView: View {
                 // Header with background
                 ZStack(alignment: .bottomLeading) {
                     KFImage(URL(string: profile.backgroundUrl))
+                        .placeholder{
+                            Rectangle().fill(.gray)
+                        }
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(height: 200)
