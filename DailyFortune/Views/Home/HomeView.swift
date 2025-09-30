@@ -55,7 +55,6 @@ final class HomeViewModel: ObservableObject {
     func drawFortune(authManager: AuthManager) {
         errorMessage = nil
         
-        // --- FIX #5 START ---
         if authManager.isAuthenticated {
             // 已登录用户，调用API
             isLoading = true
@@ -75,7 +74,6 @@ final class HomeViewModel: ObservableObject {
             // 未登录用户，本地计算
             self.fortune = FortuneUtils.drawFortuneLocally()
         }
-        // --- FIX #5 END ---
     }
 }
 
@@ -103,11 +101,14 @@ struct HomeView: View {
                         .font(.system(size: 80, weight: .bold, design: .rounded))
                     
                     if authManager.isAuthenticated && !viewModel.countdown.isEmpty {
+                        // --- FIX START: 优化倒计时元素背景以提高对比度 ---
                         Text("距离下次抽取: \(viewModel.countdown)")
                             .font(.headline)
                             .padding()
-                            .background(.thinMaterial)
+                            // 使用半透明黑色背景，确保在任何彩色背景上都有足够对比度
+                            .background(Color.black.opacity(0.25))
                             .cornerRadius(10)
+                        // --- FIX END ---
                     }
                 } else {
                     Button(action: {
