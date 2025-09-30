@@ -7,7 +7,6 @@ final class ProfileViewModel: ObservableObject {
     @Published var profile: (any Codable & Identifiable & Hashable)?
     @Published var history: [FortuneHistoryItem] = []
     
-    // isLoading 仅用于首次进入页面的全屏加载动画
     @Published var isLoading = true
     @Published var errorMessage: String?
     
@@ -120,7 +119,6 @@ struct ProfileView: View {
                     .padding(.horizontal)
                 Text("请下拉页面重试")
                     .font(.caption)
-                    // --- FIX: 使用 .secondary 替代 .tertiary 解决编译错误 ---
                     .foregroundColor(.secondary)
             }
         } else if let profile = viewModel.displayableProfile {
@@ -133,7 +131,7 @@ struct ProfileView: View {
 }
 
 
-// ProfileContentView 保持不变
+// ProfileContentView remains unchanged, except for one line in headerView
 struct ProfileContentView: View {
     let profile: UserPublicProfile
     let history: [FortuneHistoryItem]
@@ -156,17 +154,23 @@ struct ProfileContentView: View {
     
     private var headerView: some View {
         ZStack {
+            // --- FIX START: 修改占位符背景色以匹配主题 ---
             KFImage(URL(string: profile.backgroundUrl))
                 .placeholder{
-                    Rectangle().fill(Color(uiColor: .secondarySystemBackground))
+                    // 使用 .systemBackground，它在亮色模式下为白色，暗色模式下为深色
+                    Rectangle().fill(Color(uiColor: .systemBackground))
                 }
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(height: headerHeight)
                 .clipped()
+            // --- FIX END ---
             
-            Rectangle()
-                .fill(.black.opacity(0.4))
+            // 只有当有背景图时，才添加遮罩层
+            if !profile.backgroundUrl.isEmpty {
+                Rectangle()
+                    .fill(.black.opacity(0.4))
+            }
             
             VStack {
                 Spacer()
@@ -191,8 +195,8 @@ struct ProfileContentView: View {
                             .font(.headline)
                             .opacity(0.8)
                     }
-                    .foregroundColor(.white)
-                    .shadow(radius: 3)
+                    .foregroundColor(profile.backgroundUrl.isEmpty ? .primary : .white)
+                    .shadow(radius: profile.backgroundUrl.isEmpty ? 0 : 3)
                     
                     Spacer()
                 }
