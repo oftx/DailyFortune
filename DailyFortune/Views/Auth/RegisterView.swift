@@ -31,91 +31,91 @@ final class RegisterViewModel: ObservableObject {
     }
 }
 
-// --- FIX #1 START ---
-// 新增：用于管理弹窗状态的模型
 struct PolicyContent: Identifiable {
     let id: String
     let title: String
     let content: String
 }
-// --- FIX #1 END ---
 
 struct RegisterView: View {
     @StateObject private var viewModel = RegisterViewModel()
     @EnvironmentObject var authManager: AuthManager
-    
-    // --- FIX #1 START ---
-    // 管理当前要显示的协议内容
     @State private var policyToShow: PolicyContent?
-    // --- FIX #1 END ---
+    
+    // --- FIX START: 监测颜色模式 ---
+    @Environment(\.colorScheme) var colorScheme
+    // --- FIX END ---
     
     var body: some View {
-        VStack {
-            Text("创建账户")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.bottom, 40)
+        // --- FIX START: 使用 ZStack 来控制背景颜色 ---
+        ZStack {
+            // 在亮色模式下，设置背景为系统分组灰色
+            if colorScheme == .light {
+                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            }
             
-            Form {
-                Section(header: Text("账户信息")) {
-                    TextField("用户ID*", text: $viewModel.username)
-                        .autocapitalization(.none)
-                    TextField("电子邮箱*", text: $viewModel.email)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                    SecureField("密码 (至少6位)*", text: $viewModel.password)
-                }
+            VStack {
+                Text("创建账户")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.bottom, 40)
                 
-                Section {
-                    Toggle(isOn: $viewModel.agreedToTerms) {
-                        // --- FIX #1 START ---
-                        // 将文本转换为可点击的链接
-                        Text(.init("我已阅读并同意[《用户协议》](agreement)和[《隐私政策》](privacy)"))
-                        // --- FIX #1 END ---
+                Form {
+                    Section(header: Text("账户信息")) {
+                        TextField("用户ID*", text: $viewModel.username)
+                            .autocapitalization(.none)
+                        TextField("电子邮箱*", text: $viewModel.email)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                        SecureField("密码 (至少6位)*", text: $viewModel.password)
                     }
-                }
-                
-                if let errorMessage = viewModel.errorMessage {
+                    
                     Section {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
+                        Toggle(isOn: $viewModel.agreedToTerms) {
+                            Text(.init("我已阅读并同意[《用户协议》](agreement)和[《隐私政策》](privacy)"))
+                        }
+                    }
+                    
+                    if let errorMessage = viewModel.errorMessage {
+                        Section {
+                            Text(errorMessage)
+                                .foregroundColor(.red)
+                        }
                     }
                 }
-            }
-            // --- FIX #1 START ---
-            // 处理链接点击事件
-            .environment(\.openURL, OpenURLAction { url in
-                if url.absoluteString == "agreement" {
-                    policyToShow = PolicyContent(id: "agreement", title: "用户协议", content: PolicyText.userAgreement)
-                    return .handled
-                } else if url.absoluteString == "privacy" {
-                    policyToShow = PolicyContent(id: "privacy", title: "隐私政策", content: PolicyText.privacyPolicy)
-                    return .handled
+                // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
+                .scrollContentBackground(.hidden)
+                .environment(\.openURL, OpenURLAction { url in
+                    if url.absoluteString == "agreement" {
+                        policyToShow = PolicyContent(id: "agreement", title: "用户协议", content: PolicyText.userAgreement)
+                        return .handled
+                    } else if url.absoluteString == "privacy" {
+                        policyToShow = PolicyContent(id: "privacy", title: "隐私政策", content: PolicyText.privacyPolicy)
+                        return .handled
+                    }
+                    return .systemAction
+                })
+                
+                Button(action: {
+                    viewModel.register(authManager: authManager)
+                }) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                    } else {
+                        Text("注册")
+                    }
                 }
-                return .systemAction
-            })
-            // --- FIX #1 END ---
-            
-            Button(action: {
-                viewModel.register(authManager: authManager)
-            }) {
-                if viewModel.isLoading {
-                    ProgressView()
-                } else {
-                    Text("注册")
-                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isLoading)
+                .padding()
+                
+                Spacer()
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(viewModel.isLoading)
             .padding()
-            
-            Spacer()
         }
-        .padding()
+        // --- FIX END ---
         .navigationTitle("注册")
         .navigationBarTitleDisplayMode(.inline)
-        // --- FIX #1 START ---
-        // 添加模态视图
         .sheet(item: $policyToShow) { policy in
             NavigationView {
                 ScrollView {
@@ -128,12 +128,9 @@ struct RegisterView: View {
                 })
             }
         }
-        // --- FIX #1 END ---
     }
 }
 
-// --- FIX #1 START ---
-// 将协议文本移到一个单独的结构体中，保持视图代码整洁
 struct PolicyText {
     static let userAgreement = """
     欢迎使用“每日运势”！
@@ -188,4 +185,3 @@ struct PolicyText {
     感谢您的信任！
     """
 }
-// --- FIX #1 END ---

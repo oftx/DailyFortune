@@ -20,9 +20,7 @@ final class LoginViewModel: ObservableObject {
         }
     }
     
-    // --- FIX #3 START: 添加一个闭包，以便在登录成功后通知视图 ---
     func login(authManager: AuthManager, completion: @escaping () -> Void) {
-    // --- FIX #3 END ---
         isLoading = true
         errorMessage = nil
         
@@ -30,7 +28,7 @@ final class LoginViewModel: ObservableObject {
             do {
                 let response = try await APIService.shared.login(username: username, password: password)
                 authManager.login(token: response.accessToken, user: response.user)
-                completion() // 调用闭包
+                completion()
             } catch {
                 self.errorMessage = error.localizedDescription
             }
@@ -42,75 +40,84 @@ final class LoginViewModel: ObservableObject {
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject var authManager: AuthManager
-    // --- FIX #3 START: 获取 dismiss 环境值以关闭 sheet ---
     @Environment(\.dismiss) var dismiss
-    // --- FIX #3 END ---
+    
+    // --- FIX START: 监测颜色模式 ---
+    @Environment(\.colorScheme) var colorScheme
+    // --- FIX END ---
 
     var body: some View {
         NavigationStack {
-            VStack {
-                Text("每日运势")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding(.bottom, 40)
+            // --- FIX START: 使用 ZStack 来控制背景颜色 ---
+            ZStack {
+                // 在亮色模式下，设置背景为系统分组灰色
+                if colorScheme == .light {
+                    Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+                }
+                
+                // 主内容
+                VStack {
+                    Text("每日运势")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .padding(.bottom, 40)
 
-                Form {
-                    Section {
-                        TextField("用户名", text: $viewModel.username)
-                            .textContentType(.username)
-                            .autocapitalization(.none)
-                        SecureField("密码", text: $viewModel.password)
-                            .textContentType(.password)
+                    Form {
+                        Section {
+                            TextField("用户名", text: $viewModel.username)
+                                .textContentType(.username)
+                                .autocapitalization(.none)
+                            SecureField("密码", text: $viewModel.password)
+                                .textContentType(.password)
+                        }
                     }
-                }
-                .frame(height: 150)
-                .scrollDisabled(true)
-                
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .padding(.horizontal)
-                        .multilineTextAlignment(.center)
-                        // --- FIX START: 强制视图垂直扩展以显示多行文本 ---
-                        .fixedSize(horizontal: false, vertical: true)
-                        // --- FIX END ---
-                }
-                
-                Button(action: {
-                    // --- FIX #3 START: 登录成功后关闭 sheet ---
-                    viewModel.login(authManager: authManager) {
-                        dismiss()
+                    .frame(height: 150)
+                    .scrollDisabled(true)
+                    // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
+                    .scrollContentBackground(.hidden)
+                    
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .padding(.horizontal)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    // --- FIX #3 END ---
-                }) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                    } else {
-                        Text("登录")
+                    
+                    Button(action: {
+                        viewModel.login(authManager: authManager) {
+                            dismiss()
+                        }
+                    }) {
+                        if viewModel.isLoading {
+                            ProgressView()
+                        } else {
+                            Text("登录")
+                        }
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isLoading)
-                .padding()
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isLoading)
+                    .padding()
 
-                HStack {
-                    Text("没有账户？")
-                    if viewModel.isRegistrationOpen {
-                        NavigationLink("点此注册", destination: RegisterView())
-                    } else {
-                        Text("注册已关闭")
-                            .foregroundColor(.secondary)
+                    HStack {
+                        Text("没有账户？")
+                        if viewModel.isRegistrationOpen {
+                            NavigationLink("点此注册", destination: RegisterView())
+                        } else {
+                            Text("注册已关闭")
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .padding()
+                    
+                    Spacer()
                 }
                 .padding()
-                
-                Spacer()
             }
-            .padding()
+            // --- FIX END ---
             .onAppear {
                 viewModel.checkRegistrationStatus()
             }
-            // --- FIX #3 START: 添加工具栏和取消按钮 ---
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("取消") {
@@ -118,7 +125,6 @@ struct LoginView: View {
                     }
                 }
             }
-            // --- FIX #3 END ---
         }
     }
 }
