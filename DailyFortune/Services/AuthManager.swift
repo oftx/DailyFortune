@@ -5,10 +5,7 @@ import Combine
 @MainActor
 final class AuthManager: ObservableObject {
     
-    // --- FIX #1 START: 添加加载状态 ---
     @Published private(set) var isLoading = true
-    // --- FIX #1 END ---
-    
     @Published private(set) var token: String?
     @Published private(set) var currentUser: UserMeProfile?
     
@@ -17,16 +14,22 @@ final class AuthManager: ObservableObject {
     }
     
     init() {
-        // 在后台任务中检查初始登录状态
         Task(priority: .userInitiated) {
-            self.token = KeychainService.shared.getAccessToken()
+            // --- FIX START: 重构整个初始化逻辑以实现持久化登录 ---
             
-            if self.isAuthenticated {
-                await fetchCurrentUser()
+            // 1. 从 Keychain 读取存储的 token
+            let storedToken = KeychainService.shared.getAccessToken()
+
+            // 2. 如果存在 token，就尝试用它来获取用户信息
+            if let token = storedToken, !token.isEmpty {
+                self.token = token // 先设置 token
+                await self.fetchCurrentUser() // 然后去服务器验证并获取用户信息
             }
             
-            // 无论成功与否，都结束加载状态
+            // 3. 无论登录成功与否（可能token已过期），都结束初始加载状态
             self.isLoading = false
+            
+            // --- FIX END ---
         }
     }
     
@@ -44,6 +47,7 @@ final class AuthManager: ObservableObject {
     
     func fetchCurrentUser() async {
         guard token != nil else {
+            // 如果在调用此方法时没有token，则确保是登出状态
             logout()
             return
         }
@@ -52,7 +56,8 @@ final class AuthManager: ObservableObject {
             let response = try await APIService.shared.getMyProfile()
             self.currentUser = response.user
         } catch {
-            print("获取用户信息失败: \(error.localizedDescription)")
+            // 如果获取失败（例如token过期或网络错误），则登出
+            print("持久化登录失败 (可能是token已过期): \(error.localizedDescription)")
             logout()
         }
     }
