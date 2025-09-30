@@ -5,8 +5,9 @@ import Combine
 @MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var profile: (any Codable & Identifiable & Hashable)?
-    
     @Published var history: [FortuneHistoryItem] = []
+    
+    // isLoading 仅用于首次进入页面的全屏加载动画
     @Published var isLoading = true
     @Published var errorMessage: String?
     
@@ -19,7 +20,9 @@ final class ProfileViewModel: ObservableObject {
         return profile as? UserPublicProfile
     }
 
-    func fetchProfile(username: String?, currentUser: UserMeProfile?) async {
+    private var currentUsername: String?
+    
+    func loadProfile(for username: String?, with currentUser: UserMeProfile?) async {
         let isMyProfile = username == nil
         guard let usernameToFetch = isMyProfile ? currentUser?.username : username else {
             errorMessage = "未指定用户"
@@ -27,74 +30,110 @@ final class ProfileViewModel: ObservableObject {
             return
         }
         
-        if let currentProfile = self.displayableProfile, currentProfile.username == usernameToFetch {
-            // Smooth refresh
-        } else {
-            isLoading = true
+        if self.profile == nil {
+            self.isLoading = true
         }
-        errorMessage = nil
+        self.errorMessage = nil
+        
+        defer {
+            if self.isLoading {
+                self.isLoading = false
+            }
+        }
         
         do {
-            if isMyProfile {
-                let response = try await APIService.shared.getMyProfile()
-                self.profile = response.user
-            } else {
-                self.profile = try await APIService.shared.getUserProfile(username: usernameToFetch)
-            }
-            self.history = try await APIService.shared.getUserFortuneHistory(username: usernameToFetch)
-        // --- FIX #2 START: 捕获并忽略 CancellationError ---
+            async let profileData = fetchProfileData(username: usernameToFetch, isMe: isMyProfile)
+            async let historyData = APIService.shared.getUserFortuneHistory(username: usernameToFetch)
+            
+            self.profile = try await profileData
+            self.history = try await historyData
+            
         } catch is CancellationError {
-            // User cancelled the refresh action, do nothing.
-            print("Refresh cancelled.")
-        // --- FIX #2 END ---
+            // 静默处理任务取消
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // 静默处理网络请求取消
         } catch {
             self.errorMessage = error.localizedDescription
         }
-        isLoading = false
     }
-}
-
-// ProfileView 和 ProfileContentView 结构体本身无需修改，保持原样即可
-struct ProfileView: View {
-    let username: String?
     
-    @StateObject private var viewModel = ProfileViewModel()
-    @EnvironmentObject var authManager: AuthManager
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView("正在加载个人资料...")
-                } else if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                } else if let profile = viewModel.displayableProfile {
-                    ProfileContentView(profile: profile, history: viewModel.history, isMe: viewModel.isMe)
-                } else {
-                    Text("未能加载个人资料")
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("")
-                }
-            }
-            .refreshable {
-                await viewModel.fetchProfile(username: username, currentUser: authManager.currentUser)
-            }
-            .onAppear {
-                if username == nil, let currentUser = authManager.currentUser {
-                    viewModel.profile = currentUser
-                }
-                Task {
-                    await viewModel.fetchProfile(username: username, currentUser: authManager.currentUser)
-                }
-            }
+    private func fetchProfileData(username: String, isMe: Bool) async throws -> (any Codable & Identifiable & Hashable) {
+        if isMe {
+            let response = try await APIService.shared.getMyProfile()
+            return response.user
+        } else {
+            return try await APIService.shared.getUserProfile(username: username)
         }
     }
 }
 
+struct ProfileView: View {
+    let username: String?
+    
+    @StateObject private var defaultViewModel = ProfileViewModel()
+    @ObservedObject var viewModel: ProfileViewModel
+    
+    @EnvironmentObject var authManager: AuthManager
+
+    init(username: String?, viewModel: ProfileViewModel) {
+        self.username = username
+        _viewModel = ObservedObject(wrappedValue: viewModel)
+    }
+
+    init(username: String?) {
+        let vm = ProfileViewModel()
+        self.init(username: username, viewModel: vm)
+        _defaultViewModel = StateObject(wrappedValue: vm)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) { Text("") }
+                }
+                .task {
+                    await viewModel.loadProfile(for: username, with: authManager.currentUser)
+                }
+                .refreshable {
+                    await viewModel.loadProfile(for: username, with: authManager.currentUser)
+                }
+        }
+    }
+    
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isLoading {
+            ProgressView("正在加载个人资料...")
+        } else if let errorMessage = viewModel.errorMessage {
+            VStack(spacing: 12) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: 50))
+                    .foregroundColor(.secondary)
+                Text("加载失败")
+                    .font(.headline)
+                Text(errorMessage)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Text("请下拉页面重试")
+                    .font(.caption)
+                    // --- FIX: 使用 .secondary 替代 .tertiary 解决编译错误 ---
+                    .foregroundColor(.secondary)
+            }
+        } else if let profile = viewModel.displayableProfile {
+            ProfileContentView(profile: profile, history: viewModel.history, isMe: viewModel.isMe)
+        } else {
+            Text("未能加载个人资料，请下拉重试。")
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+
+// ProfileContentView 保持不变
 struct ProfileContentView: View {
     let profile: UserPublicProfile
     let history: [FortuneHistoryItem]
