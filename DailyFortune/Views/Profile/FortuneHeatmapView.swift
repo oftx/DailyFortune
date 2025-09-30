@@ -14,29 +14,19 @@ struct FortuneHeatmapView: View {
         let daysInYear = 365
         let today = calendar.startOfDay(for: Date())
 
-        // --- FIX START: Perform all calculations using local constants first ---
-
-        // 1. Calculate the array of dates locally.
-        // We convert the ReversedCollection back to an Array immediately for stability.
         let calculatedDays = Array((0..<daysInYear).map {
             calendar.date(byAdding: .day, value: -$0, to: today)!
         }.reversed())
 
-        // 2. Calculate the history dictionary locally.
         let calculatedHistoryDict = Dictionary(uniqueKeysWithValues: history.map {
             (calendar.startOfDay(for: $0.createdAt).toShortDateString(), $0)
         })
 
-        // 3. Calculate the column indices using the local `calculatedDays` constant.
         let calculatedColumnIndices = Array(stride(from: 0, to: calculatedDays.count, by: 7))
 
-        // 4. Now that all calculations are complete, assign them to the instance properties.
-        // This fully initializes the struct in one go, satisfying the compiler.
         self.days = calculatedDays
         self.historyDict = calculatedHistoryDict
         self.columnStartIndices = calculatedColumnIndices
-        
-        // --- FIX END ---
     }
 
     var body: some View {
@@ -45,18 +35,21 @@ struct FortuneHeatmapView: View {
                 HStack(alignment: .top, spacing: 2) {
                     ForEach(columnStartIndices, id: \.self) { startIndex in
                         columnView(for: startIndex)
-                            .id(startIndex)
                     }
                 }
                 .padding()
+                // --- FIX START: 将 ID 应用于整个带边距的 HStack ---
+                .id("heatmap_content")
+                // --- FIX END ---
             }
             .onAppear {
-                if let lastColumnIndex = columnStartIndices.last {
-                    proxy.scrollTo(lastColumnIndex, anchor: .trailing)
-                }
+                // --- FIX START: 滚动到容器视图的 ID，而不是最后一列 ---
+                // 这样可以确保包含 trailing padding 在内的整个内容都滚动到末尾。
+                proxy.scrollTo("heatmap_content", anchor: .trailing)
+                // --- FIX END ---
             }
         }
-        .frame(height: 15 * 7 + 2 * 6 + 30)
+        .frame(height: 15 * 7 + 2 * 6 + 30) // 15*7 for cells, 2*6 for spacing, 30 for padding
         .background(.thinMaterial)
         .cornerRadius(10)
     }
