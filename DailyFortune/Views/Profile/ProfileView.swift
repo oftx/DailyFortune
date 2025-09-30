@@ -19,7 +19,6 @@ final class ProfileViewModel: ObservableObject {
         return profile as? UserPublicProfile
     }
 
-    // `fetchProfile` 方法保持不变
     func fetchProfile(username: String?, currentUser: UserMeProfile?) async {
         let isMyProfile = username == nil
         guard let usernameToFetch = isMyProfile ? currentUser?.username : username else {
@@ -29,7 +28,7 @@ final class ProfileViewModel: ObservableObject {
         }
         
         if let currentProfile = self.displayableProfile, currentProfile.username == usernameToFetch {
-            // Smooth refresh, no loading indicator
+            // Smooth refresh
         } else {
             isLoading = true
         }
@@ -43,6 +42,11 @@ final class ProfileViewModel: ObservableObject {
                 self.profile = try await APIService.shared.getUserProfile(username: usernameToFetch)
             }
             self.history = try await APIService.shared.getUserFortuneHistory(username: usernameToFetch)
+        // --- FIX #2 START: 捕获并忽略 CancellationError ---
+        } catch is CancellationError {
+            // User cancelled the refresh action, do nothing.
+            print("Refresh cancelled.")
+        // --- FIX #2 END ---
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -50,6 +54,7 @@ final class ProfileViewModel: ObservableObject {
     }
 }
 
+// ProfileView 和 ProfileContentView 结构体本身无需修改，保持原样即可
 struct ProfileView: View {
     let username: String?
     
@@ -69,15 +74,12 @@ struct ProfileView: View {
                     Text("未能加载个人资料")
                 }
             }
-            // --- FIX #1 START: 移除重复的页面标题 ---
-            .navigationBarTitleDisplayMode(.inline) // 可以保留，但标题内容为空
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // 将标题设置为空字符串，从而隐藏它但保留导航栏位置
                 ToolbarItem(placement: .principal) {
                     Text("")
                 }
             }
-            // --- FIX #1 END ---
             .refreshable {
                 await viewModel.fetchProfile(username: username, currentUser: authManager.currentUser)
             }
@@ -93,7 +95,6 @@ struct ProfileView: View {
     }
 }
 
-// --- FIX #2 & #3 START: 彻底重构 ProfileContentView ---
 struct ProfileContentView: View {
     let profile: UserPublicProfile
     let history: [FortuneHistoryItem]
@@ -103,13 +104,10 @@ struct ProfileContentView: View {
 
     var body: some View {
         ScrollView {
-            // 使用 VStack 将头部和主体内容分开，避免重叠
             VStack(spacing: 0) {
-                // 头部区域
                 headerView
                     .frame(height: headerHeight)
                 
-                // 主体内容区域
                 mainContentView
                     .padding()
             }
@@ -117,10 +115,8 @@ struct ProfileContentView: View {
         .ignoresSafeArea(edges: .top)
     }
     
-    // 头部视图
     private var headerView: some View {
         ZStack {
-            // 背景图层
             KFImage(URL(string: profile.backgroundUrl))
                 .placeholder{
                     Rectangle().fill(Color(uiColor: .secondarySystemBackground))
@@ -130,11 +126,9 @@ struct ProfileContentView: View {
                 .frame(height: headerHeight)
                 .clipped()
             
-            // 遮罩图层
             Rectangle()
                 .fill(.black.opacity(0.4))
             
-            // 用户信息内容图层
             VStack {
                 Spacer()
                 HStack(alignment: .bottom, spacing: 16) {
@@ -143,7 +137,6 @@ struct ProfileContentView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 90, height: 90)
-                            // 修改为圆角矩形
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                             .overlay {
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -162,14 +155,13 @@ struct ProfileContentView: View {
                     .foregroundColor(.white)
                     .shadow(radius: 3)
                     
-                    Spacer() // 将内容推向左侧
+                    Spacer()
                 }
                 .padding()
             }
         }
     }
     
-    // 主体内容视图
     private var mainContentView: some View {
         VStack(alignment: .leading, spacing: 20) {
             if !profile.bio.isEmpty {
@@ -205,7 +197,6 @@ struct ProfileContentView: View {
         }
     }
 
-    // 统计数据子视图
     private func statItem(value: String, label: String) -> some View {
         VStack {
             Text(value)
@@ -215,7 +206,6 @@ struct ProfileContentView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .frame(minWidth: 80) // 给每个项目一个最小宽度以优化布局
+        .frame(minWidth: 80)
     }
 }
-// --- FIX #2 & #3 END ---

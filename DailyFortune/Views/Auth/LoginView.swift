@@ -19,8 +19,10 @@ final class LoginViewModel: ObservableObject {
             }
         }
     }
-
-    func login(authManager: AuthManager) {
+    
+    // --- FIX #3 START: 添加一个闭包，以便在登录成功后通知视图 ---
+    func login(authManager: AuthManager, completion: @escaping () -> Void) {
+    // --- FIX #3 END ---
         isLoading = true
         errorMessage = nil
         
@@ -28,6 +30,7 @@ final class LoginViewModel: ObservableObject {
             do {
                 let response = try await APIService.shared.login(username: username, password: password)
                 authManager.login(token: response.accessToken, user: response.user)
+                completion() // 调用闭包
             } catch {
                 self.errorMessage = error.localizedDescription
             }
@@ -39,6 +42,9 @@ final class LoginViewModel: ObservableObject {
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject var authManager: AuthManager
+    // --- FIX #3 START: 获取 dismiss 环境值以关闭 sheet ---
+    @Environment(\.dismiss) var dismiss
+    // --- FIX #3 END ---
 
     var body: some View {
         NavigationStack {
@@ -57,21 +63,22 @@ struct LoginView: View {
                             .textContentType(.password)
                     }
                 }
-                .frame(height: 150) // 调整高度以适应布局
-                .scrollDisabled(true) // 禁止表单滚动
+                .frame(height: 150)
+                .scrollDisabled(true)
                 
-                // --- FIX #3 START ---
-                // 将错误信息移出Form，确保完整显示
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .padding(.horizontal)
                         .multilineTextAlignment(.center)
                 }
-                // --- FIX #3 END ---
                 
                 Button(action: {
-                    viewModel.login(authManager: authManager)
+                    // --- FIX #3 START: 登录成功后关闭 sheet ---
+                    viewModel.login(authManager: authManager) {
+                        dismiss()
+                    }
+                    // --- FIX #3 END ---
                 }) {
                     if viewModel.isLoading {
                         ProgressView()
@@ -100,6 +107,15 @@ struct LoginView: View {
             .onAppear {
                 viewModel.checkRegistrationStatus()
             }
+            // --- FIX #3 START: 添加工具栏和取消按钮 ---
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+            }
+            // --- FIX #3 END ---
         }
     }
 }
