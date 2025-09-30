@@ -71,6 +71,9 @@ struct LoginView: View {
                         .foregroundColor(.red)
                         .padding(.horizontal)
                         .multilineTextAlignment(.center)
+                        // --- FIX START: 强制视图垂直扩展以显示多行文本 ---
+                        .fixedSize(horizontal: false, vertical: true)
+                        // --- FIX END ---
                 }
                 
                 Button(action: {
