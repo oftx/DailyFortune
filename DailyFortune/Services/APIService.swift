@@ -178,12 +178,17 @@ final class APIService {
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         
-        var components = URLComponents()
-        components.queryItems = [
-            URLQueryItem(name: "username", value: username),
-            URLQueryItem(name: "password", value: password)
-        ]
-        request.httpBody = components.query?.data(using: .utf8)
+        // --- FIX START: Manually build and percent-encode the form body ---
+        // Manually percent-encode username and password to ensure special characters like emoji are handled correctly.
+        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        
+        // Construct the form data string.
+        let bodyString = "username=\(encodedUsername)&password=\(encodedPassword)"
+        
+        // Set the httpBody from the manually created string.
+        request.httpBody = bodyString.data(using: .utf8)
+        // --- FIX END ---
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw APIError.invalidResponse }
