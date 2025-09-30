@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CE14D3942E8BEC1F00DF20F6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CE14D3932E8BEC1F00DF20F6 /* Assets.xcassets */; };
 		CE15F22A2E8BA8880072CE63 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = CE15F2292E8BA8880072CE63 /* Kingfisher */; };
 		CE15F22C2E8BA8880072CE63 /* SwiftKeychainWrapper in Frameworks */ = {isa = PBXBuildFile; productRef = CE15F22B2E8BA8880072CE63 /* SwiftKeychainWrapper */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CE14D3932E8BEC1F00DF20F6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CEA09E262E8BA34400FF4113 /* DailyFortune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyFortune.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEA09E332E8BA34500FF4113 /* DailyFortuneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyFortuneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEA09E3D2E8BA34500FF4113 /* DailyFortuneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyFortuneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,6 +81,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		CE14D3922E8BEBE000DF20F6 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CE14D3932E8BEC1F00DF20F6 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		CE15F2282E8BA8880072CE63 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -89,6 +99,7 @@
 		CEA09E1D2E8BA34400FF4113 = {
 			isa = PBXGroup;
 			children = (
+				CE14D3922E8BEBE000DF20F6 /* Resources */,
 				CEA09E282E8BA34400FF4113 /* DailyFortune */,
 				CEA09E362E8BA34500FF4113 /* DailyFortuneTests */,
 				CEA09E402E8BA34500FF4113 /* DailyFortuneUITests */,
@@ -233,6 +244,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE14D3942E8BEC1F00DF20F6 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
