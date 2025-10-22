@@ -14,4 +14,11 @@ extension Date {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: self)
     }
+    
+    /// 将日期格式化为 ISO8601 字符串 (e.g., "2023-10-27T10:00:00Z")，兼容 iOS 14
+    func toISO8601String() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: self)
+    }
 }

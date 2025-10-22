@@ -40,41 +40,48 @@ final class LoginViewModel: ObservableObject {
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject var authManager: AuthManager
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentationMode) var presentationMode
     
-    // --- FIX START: 监测颜色模式 ---
     @Environment(\.colorScheme) var colorScheme
-    // --- FIX END ---
 
     var body: some View {
-        NavigationStack {
-            // --- FIX START: 使用 ZStack 来控制背景颜色 ---
+        NavigationView {
             ZStack {
-                // 在亮色模式下，设置背景为系统分组灰色
                 if colorScheme == .light {
-                    Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+                    Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 }
                 
-                // 主内容
                 VStack {
                     Text("每日运势")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .padding(.bottom, 40)
 
-                    Form {
-                        Section {
-                            TextField("用户名", text: $viewModel.username)
-                                .textContentType(.username)
-                                .autocapitalization(.none)
-                            SecureField("密码", text: $viewModel.password)
-                                .textContentType(.password)
+                    if #available(iOS 16.0, *) {
+                        Form {
+                            Section {
+                                TextField("用户名", text: $viewModel.username)
+                                    .textContentType(.username)
+                                    .autocapitalization(.none)
+                                SecureField("密码", text: $viewModel.password)
+                                    .textContentType(.password)
+                            }
                         }
+                        .frame(height: 150)
+                        .scrollDisabled(true)
+                        .scrollContentBackground(.hidden)
+                    } else {
+                        Form {
+                            Section {
+                                TextField("用户名", text: $viewModel.username)
+                                    .textContentType(.username)
+                                    .autocapitalization(.none)
+                                SecureField("密码", text: $viewModel.password)
+                                    .textContentType(.password)
+                            }
+                        }
+                        .frame(height: 150)
                     }
-                    .frame(height: 150)
-                    .scrollDisabled(true)
-                    // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
-                    .scrollContentBackground(.hidden)
                     
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
@@ -84,20 +91,8 @@ struct LoginView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     
-                    Button(action: {
-                        viewModel.login(authManager: authManager) {
-                            dismiss()
-                        }
-                    }) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                        } else {
-                            Text("登录")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.isLoading)
-                    .padding()
+                    loginButton
+                        .padding()
 
                     HStack {
                         Text("没有账户？")
@@ -114,17 +109,34 @@ struct LoginView: View {
                 }
                 .padding()
             }
-            // --- FIX END ---
             .onAppear {
                 viewModel.checkRegistrationStatus()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("取消") {
-                        dismiss()
+                        presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
         }
+    }
+    
+    @ViewBuilder
+    private var loginButton: some View {
+        Button(action: {
+            viewModel.login(authManager: authManager) {
+                presentationMode.wrappedValue.dismiss()
+            }
+        }) {
+            if viewModel.isLoading {
+                ProgressView()
+            } else {
+                Text("登录")
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .ifavailable_borderedProminent()
+        .disabled(viewModel.isLoading)
     }
 }

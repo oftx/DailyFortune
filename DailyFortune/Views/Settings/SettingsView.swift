@@ -3,6 +3,7 @@ import Combine
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
+    // FIX: Declare each @Published property on its own line
     @Published var displayName: String = ""
     @Published var bio: String = ""
     @Published var avatarUrl: String = ""
@@ -33,24 +34,14 @@ final class SettingsViewModel: ObservableObject {
         successMessage = nil
         
         let payload = UserUpdatePayload(
-            displayName: displayName,
-            bio: bio,
-            avatarUrl: avatarUrl,
-            backgroundUrl: backgroundUrl,
-            language: language,
-            timezone: timezone,
-            qq: Int(qq),
-            useQqAvatar: useQqAvatar
+            displayName: displayName, bio: bio, avatarUrl: avatarUrl, backgroundUrl: backgroundUrl,
+            language: language, timezone: timezone, qq: Int(qq), useQqAvatar: useQqAvatar
         )
         
         Task {
             do {
-                // --- FIX START ---
-                // 调用返回 MyProfileResponse 的 updateMyProfile
                 let response = try await APIService.shared.updateMyProfile(payload: payload)
-                // 从响应中提取 user 对象并更新 AuthManager
                 authManager.updateUser(response.user)
-                // --- FIX END ---
                 self.successMessage = "设置已成功保存！"
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -66,17 +57,24 @@ struct SettingsView: View {
     @State private var isChangePasswordSheetPresented = false
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section(header: Text("个人资料")) {
                     TextField("显示名称", text: $viewModel.displayName)
-                    TextField("个人简介", text: $viewModel.bio, axis: .vertical)
+                    VStack(alignment: .leading) {
+                        Text("个人简介").font(.caption).foregroundColor(.secondary)
+                        TextEditor(text: $viewModel.bio).frame(minHeight: 80)
+                    }
                     TextField("头像图片链接", text: $viewModel.avatarUrl).keyboardType(.URL)
                     TextField("主页背景图片链接", text: $viewModel.backgroundUrl).keyboardType(.URL)
-                    LabeledContent("用户ID") {
+                    HStack {
+                        Text("用户ID")
+                        Spacer()
                         Text(authManager.currentUser?.username ?? "").foregroundColor(.secondary)
                     }
-                    LabeledContent("电子邮箱") {
+                    HStack {
+                        Text("电子邮箱")
+                        Spacer()
                         Text(authManager.currentUser?.email ?? "").foregroundColor(.secondary)
                     }
                 }
@@ -87,61 +85,36 @@ struct SettingsView: View {
                 }
                 
                 Section(header: Text("偏好设置")) {
-                    Picker("语言", selection: $viewModel.language) {
-                        Text("简体中文").tag("zh")
-                        Text("English").tag("en")
-                    }
-
+                    Picker("语言", selection: $viewModel.language) { Text("简体中文").tag("zh"); Text("English").tag("en") }
                     Picker("时区", selection: $viewModel.timezone) {
-                        ForEach(Constants.timezones, id: \.self) { tz in
-                            Text(tz).tag(tz)
-                        }
+                        ForEach(Constants.timezones, id: \.self) { tz in Text(tz).tag(tz) }
                     }
                 }
                 
                 Section(header: Text("安全")) {
-                    Button("更改密码") {
-                        isChangePasswordSheetPresented = true
-                    }
+                    Button("更改密码") { isChangePasswordSheetPresented = true }
                 }
                 
-                if let message = viewModel.successMessage {
-                    Text(message).foregroundColor(.green)
-                }
-                if let message = viewModel.errorMessage {
-                    Text(message).foregroundColor(.red)
-                }
+                if let message = viewModel.successMessage { Text(message).foregroundColor(.green) }
+                if let message = viewModel.errorMessage { Text(message).foregroundColor(.red) }
                 
-                // Logout Button
                 Section {
-                    Button("登出", role: .destructive) {
-                        authManager.logout()
-                    }
+                    Button(action: { authManager.logout() }) { Text("登出").foregroundColor(.red) }
                 }
             }
             .navigationTitle("设置")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        viewModel.saveChanges(authManager: authManager)
-                    }) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                        } else {
-                            Text("保存")
-                        }
+                    Button(action: { viewModel.saveChanges(authManager: authManager) }) {
+                        if viewModel.isLoading { ProgressView() } else { Text("保存") }
                     }
                     .disabled(viewModel.isLoading)
                 }
             }
             .onAppear {
-                if let user = authManager.currentUser {
-                    viewModel.load(user: user)
-                }
+                if let user = authManager.currentUser { viewModel.load(user: user) }
             }
-            .sheet(isPresented: $isChangePasswordSheetPresented) {
-                ChangePasswordView()
-            }
+            .sheet(isPresented: $isChangePasswordSheetPresented) { ChangePasswordView() }
         }
     }
 }
