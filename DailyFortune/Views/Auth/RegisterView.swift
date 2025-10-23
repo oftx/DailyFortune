@@ -42,12 +42,16 @@ struct RegisterView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var policyToShow: PolicyContent?
     
+    // --- FIX START: 监测颜色模式 ---
     @Environment(\.colorScheme) var colorScheme
+    // --- FIX END ---
     
     var body: some View {
+        // --- FIX START: 使用 ZStack 来控制背景颜色 ---
         ZStack {
+            // 在亮色模式下，设置背景为系统分组灰色
             if colorScheme == .light {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
             }
             
             VStack {
@@ -79,43 +83,29 @@ struct RegisterView: View {
                         }
                     }
                 }
-                // --- FIX START: Replace wrong environment modifier with .onOpenURL ---
-                .onOpenURL { url in
+                // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
+                .scrollContentBackground(.hidden)
+                .environment(\.openURL, OpenURLAction { url in
                     if url.absoluteString == "agreement" {
                         policyToShow = PolicyContent(id: "agreement", title: "用户协议", content: PolicyText.userAgreement)
+                        return .handled
                     } else if url.absoluteString == "privacy" {
                         policyToShow = PolicyContent(id: "privacy", title: "隐私政策", content: PolicyText.privacyPolicy)
+                        return .handled
                     }
-                }
-                // --- FIX END ---
-                // --- FIX START: Hide Form background for iOS 14 ---
-                .onAppear {
-                    UITableView.appearance().backgroundColor = .clear
-                }
-                .onDisappear {
-                    UITableView.appearance().backgroundColor = .systemGroupedBackground
-                }
-                // --- FIX END ---
+                    return .systemAction
+                })
                 
                 Button(action: {
                     viewModel.register(authManager: authManager)
                 }) {
-                    HStack {
-                        Spacer()
-                        if viewModel.isLoading {
-                            ProgressView().colorInvert()
-                        } else {
-                            Text("注册").fontWeight(.semibold)
-                        }
-                        Spacer()
+                    if viewModel.isLoading {
+                        ProgressView()
+                    } else {
+                        Text("注册")
                     }
                 }
-                // --- FIX START: Replace .borderedProminent for iOS 14 ---
-                .padding()
-                .background(Color.accentColor)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-                // --- FIX END ---
+                .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isLoading)
                 .padding()
                 
@@ -123,6 +113,7 @@ struct RegisterView: View {
             }
             .padding()
         }
+        // --- FIX END ---
         .navigationTitle("注册")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $policyToShow) { policy in

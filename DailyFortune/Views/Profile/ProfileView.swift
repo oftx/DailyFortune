@@ -48,7 +48,9 @@ final class ProfileViewModel: ObservableObject {
             self.history = try await historyData
             
         } catch is CancellationError {
+            // 静默处理任务取消
         } catch let urlError as URLError where urlError.code == .cancelled {
+            // 静默处理网络请求取消
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -84,30 +86,19 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             content
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) { Text("") }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            Task {
-                                await viewModel.loadProfile(for: username, with: authManager.currentUser)
-                            }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                    }
                 }
-                // --- FIX START: Replace .task with .onAppear for iOS 14 ---
-                .onAppear {
-                    Task {
-                        await viewModel.loadProfile(for: username, with: authManager.currentUser)
-                    }
+                .task {
+                    await viewModel.loadProfile(for: username, with: authManager.currentUser)
                 }
-                // --- FIX END ---
+                .refreshable {
+                    await viewModel.loadProfile(for: username, with: authManager.currentUser)
+                }
         }
-        .navigationViewStyle(.stack)
     }
     
     @ViewBuilder
@@ -126,16 +117,21 @@ struct ProfileView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
+                Text("请下拉页面重试")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         } else if let profile = viewModel.displayableProfile {
             ProfileContentView(profile: profile, history: viewModel.history, isMe: viewModel.isMe)
         } else {
-            Text("未能加载个人资料，请重试。")
+            Text("未能加载个人资料，请下拉重试。")
                 .foregroundColor(.secondary)
         }
     }
 }
 
+
+// ProfileContentView remains unchanged, except for one line in headerView
 struct ProfileContentView: View {
     let profile: UserPublicProfile
     let history: [FortuneHistoryItem]
@@ -153,20 +149,24 @@ struct ProfileContentView: View {
                     .padding()
             }
         }
-        .edgesIgnoringSafeArea(.top)
+        .ignoresSafeArea(edges: .top)
     }
     
     private var headerView: some View {
         ZStack {
+            // --- FIX START: 修改占位符背景色以匹配主题 ---
             KFImage(URL(string: profile.backgroundUrl))
                 .placeholder{
-                    Rectangle().fill(Color(.systemBackground))
+                    // 使用 .systemBackground，它在亮色模式下为白色，暗色模式下为深色
+                    Rectangle().fill(Color(uiColor: .systemBackground))
                 }
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(height: headerHeight)
                 .clipped()
+            // --- FIX END ---
             
+            // 只有当有背景图时，才添加遮罩层
             if !profile.backgroundUrl.isEmpty {
                 Rectangle()
                     .fill(.black.opacity(0.4))
@@ -181,12 +181,10 @@ struct ProfileContentView: View {
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 90, height: 90)
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                            // --- FIX START: Replace iOS 15+ overlay modifier ---
-                            .overlay(
+                            .overlay {
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(Color.white, lineWidth: 3)
-                            )
-                            // --- FIX END ---
+                            }
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -231,7 +229,7 @@ struct ProfileContentView: View {
                 statItem(value: profile.lastActiveDate.timeAgoDisplay(), label: "最近活跃")
             }
             .padding()
-            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .background(.thinMaterial)
             .cornerRadius(12)
             
             Text("运势历史 (近一年)")
