@@ -42,12 +42,16 @@ struct RegisterView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var policyToShow: PolicyContent?
     
+    // --- FIX START: 监测颜色模式 ---
     @Environment(\.colorScheme) var colorScheme
+    // --- FIX END ---
     
     var body: some View {
+        // --- FIX START: 使用 ZStack 来控制背景颜色 ---
         ZStack {
+            // 在亮色模式下，设置背景为系统分组灰色
             if colorScheme == .light {
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
             }
             
             VStack {
@@ -56,24 +60,60 @@ struct RegisterView: View {
                     .fontWeight(.bold)
                     .padding(.bottom, 40)
                 
-                if #available(iOS 16.0, *) {
-                    Form {
-                        formContent
+                Form {
+                    Section(header: Text("账户信息")) {
+                        TextField("用户ID*", text: $viewModel.username)
+                            .autocapitalization(.none)
+                        TextField("电子邮箱*", text: $viewModel.email)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                        SecureField("密码 (至少6位)*", text: $viewModel.password)
                     }
-                    .scrollContentBackground(.hidden)
-                } else {
-                    Form {
-                        formContent
+                    
+                    Section {
+                        Toggle(isOn: $viewModel.agreedToTerms) {
+                            Text(.init("我已阅读并同意[《用户协议》](agreement)和[《隐私政策》](privacy)"))
+                        }
+                    }
+                    
+                    if let errorMessage = viewModel.errorMessage {
+                        Section {
+                            Text(errorMessage)
+                                .foregroundColor(.red)
+                        }
                     }
                 }
+                // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
+                .scrollContentBackground(.hidden)
+                .environment(\.openURL, OpenURLAction { url in
+                    if url.absoluteString == "agreement" {
+                        policyToShow = PolicyContent(id: "agreement", title: "用户协议", content: PolicyText.userAgreement)
+                        return .handled
+                    } else if url.absoluteString == "privacy" {
+                        policyToShow = PolicyContent(id: "privacy", title: "隐私政策", content: PolicyText.privacyPolicy)
+                        return .handled
+                    }
+                    return .systemAction
+                })
                 
-                registerButton
-                    .padding()
+                Button(action: {
+                    viewModel.register(authManager: authManager)
+                }) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                    } else {
+                        Text("注册")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isLoading)
+                .padding()
                 
                 Spacer()
             }
             .padding()
         }
+        // --- FIX END ---
         .navigationTitle("注册")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $policyToShow) { policy in
@@ -88,58 +128,6 @@ struct RegisterView: View {
                 })
             }
         }
-    }
-
-    @ViewBuilder
-    private var formContent: some View {
-        Section(header: Text("账户信息")) {
-            TextField("用户ID*", text: $viewModel.username)
-                .autocapitalization(.none)
-            TextField("电子邮箱*", text: $viewModel.email)
-                .keyboardType(.emailAddress)
-                .autocapitalization(.none)
-            SecureField("密码 (至少6位)*", text: $viewModel.password)
-        }
-        
-        Section {
-            Toggle(isOn: $viewModel.agreedToTerms) {
-                // FIX: Replace iOS 15+ markdown text with a compatible layout
-                HStack(spacing: 4) {
-                    Text("我已阅读并同意")
-                    Button("《用户协议》") {
-                        policyToShow = PolicyContent(id: "agreement", title: "用户协议", content: PolicyText.userAgreement)
-                    }
-                    Text("和")
-                    Button("《隐私政策》") {
-                         policyToShow = PolicyContent(id: "privacy", title: "隐私政策", content: PolicyText.privacyPolicy)
-                    }
-                }
-                .font(.footnote) // Use a smaller font to fit
-            }
-        }
-        
-        if let errorMessage = viewModel.errorMessage {
-            Section {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private var registerButton: some View {
-        Button(action: {
-            viewModel.register(authManager: authManager)
-        }) {
-            if viewModel.isLoading {
-                ProgressView()
-            } else {
-                Text("注册")
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .ifavailable_borderedProminent()
-        .disabled(viewModel.isLoading)
     }
 }
 

@@ -64,7 +64,7 @@ struct Constants {
         ]
         
         static let colorScale: [Color] = [
-            Color(UIColor.systemGray5), // Level 0 (no data)
+            Color(uiColor: .systemGray5), // Level 0 (no data)
             Color(red: 0.6, green: 0, blue: 0), // 大凶
             Color(red: 0.8, green: 0.2, blue: 0.2), // 凶
             Color(red: 0.9, green: 0.9, blue: 0.4), // 小吉

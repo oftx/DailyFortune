@@ -2,84 +2,206 @@ import Foundation
 
 // MARK: - User Models
 
+// --- FIX START ---
+// 添加 Hashable 和 Equatable 以便在视图中更好地进行状态管理
 struct UserMeProfile: Codable, Identifiable, Hashable, Equatable {
-    let id: String, email: String, role: String, language: String, timezone: String, username: String, displayName: String, bio: String, avatarUrl: String, backgroundUrl: String
-    let registrationDate: Date, lastActiveDate: Date
-    let totalDraws: Int, hasDrawnToday: Bool
-    let todaysFortune: String?, status: String
+// --- FIX END ---
+    let id: String
+    let email: String
+    let role: String
+    let language: String
+    let timezone: String
+    let username: String
+    let displayName: String
+    let bio: String
+    let avatarUrl: String
+    let backgroundUrl: String
+    let registrationDate: Date
+    let lastActiveDate: Date
+    let totalDraws: Int
+    let hasDrawnToday: Bool
+    let todaysFortune: String?
+    let status: String
     let isHidden: Bool
     let tags: [String]
-    let qq: Int?, useQqAvatar: Bool
+    let qq: Int?
+    let useQqAvatar: Bool
+
     enum CodingKeys: String, CodingKey {
         case id, email, role, language, timezone, username, bio, tags, qq, status
-        case displayName = "display_name", avatarUrl = "avatar_url", backgroundUrl = "background_url", registrationDate = "registration_date", lastActiveDate = "last_active_date", totalDraws = "total_draws", hasDrawnToday = "has_drawn_today", todaysFortune = "todays_fortune", isHidden = "is_hidden", useQqAvatar = "use_qq_avatar"
+        case displayName = "display_name"
+        case avatarUrl = "avatar_url"
+        case backgroundUrl = "background_url"
+        case registrationDate = "registration_date"
+        case lastActiveDate = "last_active_date"
+        case totalDraws = "total_draws"
+        case hasDrawnToday = "has_drawn_today"
+        case todaysFortune = "todays_fortune"
+        case isHidden = "is_hidden"
+        case useQqAvatar = "use_qq_avatar"
     }
+
     func getDisplayAvatarUrl() -> URL? {
-        if useQqAvatar, let qqNumber = qq { return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640") }
-        if !avatarUrl.isEmpty { return URL(string: avatarUrl) }
+        if useQqAvatar, let qqNumber = qq {
+            // --- FIX #6 START: 使用HTTPS协议 ---
+            return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640")
+            // --- FIX #6 END ---
+        }
+        if !avatarUrl.isEmpty {
+            return URL(string: avatarUrl)
+        }
         return nil
     }
 }
 
+// --- FIX START ---
+// 添加 Hashable 和 Equatable
 struct UserPublicProfile: Codable, Identifiable, Hashable, Equatable {
+// --- FIX END ---
     var id: String { username }
-    let username: String, displayName: String, bio: String, avatarUrl: String, backgroundUrl: String
-    let registrationDate: Date, lastActiveDate: Date
-    let totalDraws: Int, hasDrawnToday: Bool
-    let todaysFortune: String?, status: String
+    let username: String
+    let displayName: String
+    let bio: String
+    let avatarUrl: String
+    let backgroundUrl: String
+    let registrationDate: Date
+    let lastActiveDate: Date
+    let totalDraws: Int
+    let hasDrawnToday: Bool
+    let todaysFortune: String?
+    let status: String
     let isHidden: Bool
     let tags: [String]
-    let qq: Int?, useQqAvatar: Bool
+    let qq: Int?
+    let useQqAvatar: Bool
+    
     enum CodingKeys: String, CodingKey {
         case username, bio, tags, qq, status
-        case displayName = "display_name", avatarUrl = "avatar_url", backgroundUrl = "background_url", registrationDate = "registration_date", lastActiveDate = "last_active_date", totalDraws = "total_draws", hasDrawnToday = "has_drawn_today", todaysFortune = "todays_fortune", isHidden = "is_hidden", useQqAvatar = "use_qq_avatar"
+        case displayName = "display_name"
+        case avatarUrl = "avatar_url"
+        case backgroundUrl = "background_url"
+        case registrationDate = "registration_date"
+        case lastActiveDate = "last_active_date"
+        case totalDraws = "total_draws"
+        case hasDrawnToday = "has_drawn_today"
+        case todaysFortune = "todays_fortune"
+        case isHidden = "is_hidden"
+        case useQqAvatar = "use_qq_avatar"
     }
+    
     func getDisplayAvatarUrl() -> URL? {
-        if useQqAvatar, let qqNumber = qq { return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640") }
-        if !avatarUrl.isEmpty { return URL(string: avatarUrl) }
+        if useQqAvatar, let qqNumber = qq {
+            // --- FIX #6 START: 使用HTTPS协议 ---
+            return URL(string: "https://q.qlogo.cn/g?b=qq&nk=\(qqNumber)&s=640")
+            // --- FIX #6 END ---
+        }
+        if !avatarUrl.isEmpty {
+            return URL(string: avatarUrl)
+        }
         return nil
     }
 }
 
 // MARK: - Auth Models
 struct AuthResponse: Codable {
-    let accessToken: String, tokenType: String, user: UserMeProfile
-    enum CodingKeys: String, CodingKey { case accessToken = "access_token", tokenType = "token_type", user }
+    let accessToken: String
+    let tokenType: String
+    let user: UserMeProfile
+    
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case tokenType = "token_type"
+        case user
+    }
 }
+
 struct MyProfileResponse: Codable {
-    let user: UserMeProfile, nextDrawAt: Date?
-    enum CodingKeys: String, CodingKey { case user, nextDrawAt = "next_draw_at" }
+    let user: UserMeProfile
+    let nextDrawAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case user
+        case nextDrawAt = "next_draw_at"
+    }
 }
+
 struct RegistrationStatusResponse: Codable {
     let isOpen: Bool
-    enum CodingKeys: String, CodingKey { case isOpen = "is_open" }
+    enum CodingKeys: String, CodingKey {
+        case isOpen = "is_open"
+    }
 }
+
 // MARK: - Fortune Models
 struct FortuneDrawResponse: Codable {
-    let fortune: String, nextDrawAt: Date?
-    enum CodingKeys: String, CodingKey { case fortune, nextDrawAt = "next_draw_at" }
+    let fortune: String
+    let nextDrawAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case fortune
+        case nextDrawAt = "next_draw_at"
+    }
 }
+
 struct FortuneHistoryItem: Codable, Identifiable {
-    var id: String { createdAt.toISO8601String() }
-    let createdAt: Date, value: String
-    enum CodingKeys: String, CodingKey { case createdAt = "created_at", value }
+    var id: String { createdAt.ISO8601Format() }
+    let createdAt: Date
+    let value: String
+    
+    enum CodingKeys: String, CodingKey {
+        case createdAt = "created_at"
+        case value
+    }
 }
+
+
 struct LeaderboardGroup: Codable, Identifiable {
     var id: String { fortune }
-    let fortune: String, users: [LeaderboardUser]
+    let fortune: String
+    let users: [LeaderboardUser]
 }
+
 struct LeaderboardUser: Codable, Identifiable {
     var id: String { username }
-    let username: String, displayName: String
-    enum CodingKeys: String, CodingKey { case username, displayName = "display_name" }
+    let username: String
+    let displayName: String
+    
+    enum CodingKeys: String, CodingKey {
+        case username
+        case displayName = "display_name"
+    }
 }
+
 // MARK: - API Error Model
-struct APIErrorDetail: Codable { let loc: [String], msg: String, type: String }
-struct APIErrorResponse: Codable { let detail: String? }
+struct APIErrorDetail: Codable {
+    let loc: [String]
+    let msg: String
+    let type: String
+}
+
+struct APIErrorResponse: Codable {
+    let detail: String?
+}
+
 // MARK: - Update Payloads
 struct UserUpdatePayload: Codable {
-    var displayName: String? = nil, bio: String? = nil, avatarUrl: String? = nil, backgroundUrl: String? = nil, language: String? = nil, timezone: String? = nil, qq: Int? = nil, useQqAvatar: Bool? = nil
+    var displayName: String? = nil
+    var bio: String? = nil
+    var avatarUrl: String? = nil
+    var backgroundUrl: String? = nil
+    var language: String? = nil
+    var timezone: String? = nil
+    var qq: Int? = nil
+    var useQqAvatar: Bool? = nil
+    
     enum CodingKeys: String, CodingKey {
-        case displayName = "display_name", bio, avatarUrl = "avatar_url", backgroundUrl = "background_url", language, timezone, qq, useQqAvatar = "use_qq_avatar"
+        case displayName = "display_name"
+        case bio
+        case avatarUrl = "avatar_url"
+        case backgroundUrl = "background_url"
+        case language
+        case timezone
+        case qq
+        case useQqAvatar = "use_qq_avatar"
     }
 }

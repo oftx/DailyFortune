@@ -2,46 +2,84 @@ import SwiftUI
 
 struct FortuneHeatmapView: View {
     let history: [FortuneHistoryItem]
-    private let days: [Date], historyDict: [String: FortuneHistoryItem], columnStartIndices: [Int]
+
+    private let days: [Date]
+    private let historyDict: [String: FortuneHistoryItem]
+    private let columnStartIndices: [Int]
 
     init(history: [FortuneHistoryItem]) {
         self.history = history
+        
         let calendar = Calendar.current
+        let daysInYear = 365
         let today = calendar.startOfDay(for: Date())
-        self.days = Array((0..<365).map { calendar.date(byAdding: .day, value: -$0, to: today)! }.reversed())
-        self.historyDict = Dictionary(uniqueKeysWithValues: history.map { (calendar.startOfDay(for: $0.createdAt).toShortDateString(), $0) })
-        self.columnStartIndices = Array(stride(from: 0, to: days.count, by: 7))
+
+        let calculatedDays = Array((0..<daysInYear).map {
+            calendar.date(byAdding: .day, value: -$0, to: today)!
+        }.reversed())
+
+        let calculatedHistoryDict = Dictionary(uniqueKeysWithValues: history.map {
+            (calendar.startOfDay(for: $0.createdAt).toShortDateString(), $0)
+        })
+
+        let calculatedColumnIndices = Array(stride(from: 0, to: calculatedDays.count, by: 7))
+
+        self.days = calculatedDays
+        self.historyDict = calculatedHistoryDict
+        self.columnStartIndices = calculatedColumnIndices
     }
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 2) {
-                    ForEach(columnStartIndices, id: \.self) { startIndex in columnView(for: startIndex) }
+                    ForEach(columnStartIndices, id: \.self) { startIndex in
+                        columnView(for: startIndex)
+                    }
                 }
                 .padding()
+                // --- FIX START: 将 ID 应用于整个带边距的 HStack ---
                 .id("heatmap_content")
+                // --- FIX END ---
             }
-            .onAppear { proxy.scrollTo("heatmap_content", anchor: .trailing) }
+            .onAppear {
+                // --- FIX START: 滚动到容器视图的 ID，而不是最后一列 ---
+                // 这样可以确保包含 trailing padding 在内的整个内容都滚动到末尾。
+                proxy.scrollTo("heatmap_content", anchor: .trailing)
+                // --- FIX END ---
+            }
         }
-        .frame(height: 15 * 7 + 2 * 6 + 30)
-        .background(Color(UIColor.systemGray5).opacity(0.8))
+        .frame(height: 15 * 7 + 2 * 6 + 30) // 15*7 for cells, 2*6 for spacing, 30 for padding
+        .background(.thinMaterial)
         .cornerRadius(10)
     }
 
-    @ViewBuilder private func columnView(for columnStartIndex: Int) -> some View {
-        VStack(spacing: 2) { ForEach(0..<7) { rowIndex in cellView(for: columnStartIndex + rowIndex) } }
+    // Helper method to build a single column (VStack)
+    @ViewBuilder
+    private func columnView(for columnStartIndex: Int) -> some View {
+        VStack(spacing: 2) {
+            ForEach(0..<7) { rowIndex in
+                cellView(for: columnStartIndex + rowIndex)
+            }
+        }
     }
     
-    @ViewBuilder private func cellView(for dayIndex: Int) -> some View {
+    // Helper method to build a single cell (Rectangle)
+    @ViewBuilder
+    private func cellView(for dayIndex: Int) -> some View {
         if dayIndex < days.count {
             let date = days[dayIndex]
             let dateString = date.toShortDateString()
             let fortuneItem = historyDict[dateString]
+            
             let level = Constants.Heatmap.colorLevels[fortuneItem?.value ?? ""] ?? 0
             let color = Constants.Heatmap.colorScale[level]
-            RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 15, height: 15)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: 15, height: 15)
         } else {
+            // Fill with a clear rectangle to maintain grid alignment
             Rectangle().fill(Color.clear).frame(width: 15, height: 15)
         }
     }

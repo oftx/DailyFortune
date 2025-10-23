@@ -33,26 +33,22 @@ final class HomeViewModel: ObservableObject {
         guard let targetDate = nextDrawAt else { return }
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                
-                let now = Date()
-                let diff = targetDate.timeIntervalSince(now)
+            let now = Date()
+            let diff = targetDate.timeIntervalSince(now)
 
-                if diff <= 0 {
-                    self.countdown = "00:00:00"
-                    self.timer?.invalidate()
-                    self.fortune = nil
-                    self.nextDrawAt = nil
-                    return
-                }
-                
-                let hours = Int(diff) / 3600
-                let minutes = Int(diff) / 60 % 60
-                let seconds = Int(diff) % 60
-                
-                self.countdown = String(format: "%02i:%02i:%02i", hours, minutes, seconds)
+            if diff <= 0 {
+                self?.countdown = "00:00:00"
+                self?.timer?.invalidate()
+                self?.fortune = nil
+                self?.nextDrawAt = nil
+                return
             }
+            
+            let hours = Int(diff) / 3600
+            let minutes = Int(diff) / 60 % 60
+            let seconds = Int(diff) % 60
+            
+            self?.countdown = String(format: "%02i:%02i:%02i", hours, minutes, seconds)
         }
     }
 
@@ -60,6 +56,7 @@ final class HomeViewModel: ObservableObject {
         errorMessage = nil
         
         if authManager.isAuthenticated {
+            // 已登录用户，调用API
             isLoading = true
             Task {
                 do {
@@ -74,6 +71,7 @@ final class HomeViewModel: ObservableObject {
                 isLoading = false
             }
         } else {
+            // 未登录用户，本地计算
             self.fortune = FortuneUtils.drawFortuneLocally()
         }
     }
@@ -90,7 +88,7 @@ struct HomeView: View {
                     .ignoresSafeArea()
                     .animation(.easeIn, value: fortune)
             } else {
-                Color(UIColor.systemGroupedBackground)
+                Color(uiColor: .systemGroupedBackground)
                     .ignoresSafeArea()
             }
             
@@ -103,8 +101,14 @@ struct HomeView: View {
                         .font(.system(size: 80, weight: .bold, design: .rounded))
                     
                     if authManager.isAuthenticated && !viewModel.countdown.isEmpty {
+                        // --- FIX START: 优化倒计时元素背景以提高对比度 ---
                         Text("距离下次抽取: \(viewModel.countdown)")
                             .font(.headline)
+//                            .padding()
+                            // 使用半透明黑色背景，确保在任何彩色背景上都有足够对比度
+//                            .background(Color.black.opacity(0.25))
+//                            .cornerRadius(10)
+                        // --- FIX END ---
                     }
                 } else {
                     Button(action: {
@@ -115,7 +119,7 @@ struct HomeView: View {
                             .fontWeight(.bold)
                             .padding(.horizontal, 40)
                             .padding(.vertical, 20)
-                            .background(drawButtonBackground) // Use helper
+                            .background(.thickMaterial)
                             .cornerRadius(20)
                     }
                     .disabled(viewModel.isLoading)
@@ -127,24 +131,10 @@ struct HomeView: View {
         .onAppear {
             viewModel.checkUserStatus(user: authManager.currentUser)
         }
-        .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
-            Alert(
-                title: Text("错误"),
-                message: Text(viewModel.errorMessage ?? ""),
-                dismissButton: .default(Text("好的")) {
-                    viewModel.errorMessage = nil
-                }
-            )
-        }
-    }
-    
-    // FIX: Use a ViewBuilder helper for cleaner conditional background
-    @ViewBuilder
-    private var drawButtonBackground: some View {
-        if #available(iOS 15.0, *) {
-            Rectangle().fill(.thickMaterial)
-        } else {
-            Color(UIColor.systemGray5).opacity(0.8)
-        }
+        .alert("错误", isPresented: .constant(viewModel.errorMessage != nil), actions: {
+            Button("好的") { viewModel.errorMessage = nil }
+        }, message: {
+            Text(viewModel.errorMessage ?? "")
+        })
     }
 }

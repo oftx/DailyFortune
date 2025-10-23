@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine
+import Combine // <-- FIX: Added import
 
 @MainActor
 final class ChangePasswordViewModel: ObservableObject {
@@ -43,10 +43,10 @@ final class ChangePasswordViewModel: ObservableObject {
 
 struct ChangePasswordView: View {
     @StateObject private var viewModel = ChangePasswordViewModel()
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("更改密码")) {
                     SecureField("当前密码", text: $viewModel.currentPassword)
@@ -71,7 +71,7 @@ struct ChangePasswordView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") { presentationMode.wrappedValue.dismiss() }
+                    Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("确认修改") {
@@ -79,7 +79,7 @@ struct ChangePasswordView: View {
                             if success {
                                 // 延迟关闭以显示成功消息
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                    presentationMode.wrappedValue.dismiss()
+                                    dismiss()
                                 }
                             }
                         }
