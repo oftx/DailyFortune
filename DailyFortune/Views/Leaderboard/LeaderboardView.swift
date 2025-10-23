@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine // <-- FIX: Added import
+import Combine
 
 @MainActor
 final class LeaderboardViewModel: ObservableObject {
@@ -8,8 +8,6 @@ final class LeaderboardViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     func fetchLeaderboard() {
-        // 只有在首次加载、数据为空时，才将 isLoading 设为 true 以显示全屏加载器。
-        // 对于下拉刷新，.refreshable 会提供自己的 UI，我们不应替换整个视图。
         if leaderboard.isEmpty {
             isLoading = true
         }
@@ -20,7 +18,6 @@ final class LeaderboardViewModel: ObservableObject {
             } catch {
                 self.errorMessage = error.localizedDescription
             }
-            // 任务完成后，无论成功与否，都应将 isLoading 设为 false。
             isLoading = false
         }
     }
@@ -30,7 +27,7 @@ struct LeaderboardView: View {
     @StateObject private var viewModel = LeaderboardViewModel()
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Group {
                 if viewModel.isLoading {
                     ProgressView()
@@ -56,16 +53,21 @@ struct LeaderboardView: View {
                 }
             }
             .navigationTitle("今日排行榜")
-            .refreshable {
-                // .refreshable 修饰符会处理刷新动画，我们只需调用获取数据的函数。
-                viewModel.fetchLeaderboard()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        viewModel.fetchLeaderboard()
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
             }
             .onAppear {
-                // 仅在数据为空时才在 onAppear 中加载，避免切换标签时重复加载。
                 if viewModel.leaderboard.isEmpty {
                     viewModel.fetchLeaderboard()
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }

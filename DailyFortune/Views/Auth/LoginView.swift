@@ -40,22 +40,17 @@ final class LoginViewModel: ObservableObject {
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @EnvironmentObject var authManager: AuthManager
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentationMode) var presentationMode
     
-    // --- FIX START: 监测颜色模式 ---
     @Environment(\.colorScheme) var colorScheme
-    // --- FIX END ---
 
     var body: some View {
-        NavigationStack {
-            // --- FIX START: 使用 ZStack 来控制背景颜色 ---
+        NavigationView {
             ZStack {
-                // 在亮色模式下，设置背景为系统分组灰色
                 if colorScheme == .light {
-                    Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+                    Color(.systemGroupedBackground).ignoresSafeArea()
                 }
                 
-                // 主内容
                 VStack {
                     Text("每日运势")
                         .font(.largeTitle)
@@ -72,9 +67,16 @@ struct LoginView: View {
                         }
                     }
                     .frame(height: 150)
-                    .scrollDisabled(true)
-                    // 隐藏 Form 的默认背景，以显示 ZStack 中的自定义背景
-                    .scrollContentBackground(.hidden)
+                    // --- FIX START: Replace .scrollDisabled and .scrollContentBackground ---
+                    .onAppear {
+                        // Hide Form background for iOS 14
+                        UITableView.appearance().backgroundColor = .clear
+                    }
+                    .onDisappear {
+                        // Restore default Form background
+                        UITableView.appearance().backgroundColor = .systemGroupedBackground
+                    }
+                    // --- FIX END ---
                     
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
@@ -86,16 +88,28 @@ struct LoginView: View {
                     
                     Button(action: {
                         viewModel.login(authManager: authManager) {
-                            dismiss()
+                            presentationMode.wrappedValue.dismiss()
                         }
                     }) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                        } else {
-                            Text("登录")
+                        // --- FIX START: Use a frame to keep size consistent with ProgressView ---
+                        HStack {
+                            Spacer()
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .colorInvert() // Make it white on blue background
+                            } else {
+                                Text("登录").fontWeight(.semibold)
+                            }
+                            Spacer()
                         }
+                        // --- FIX END ---
                     }
-                    .buttonStyle(.borderedProminent)
+                    // --- FIX START: Replace .borderedProminent for iOS 14 ---
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                    // --- FIX END ---
                     .disabled(viewModel.isLoading)
                     .padding()
 
@@ -114,17 +128,12 @@ struct LoginView: View {
                 }
                 .padding()
             }
-            // --- FIX END ---
             .onAppear {
                 viewModel.checkRegistrationStatus()
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
-                        dismiss()
-                    }
-                }
-            }
+            .navigationBarTitle("")
+            .navigationBarHidden(true)
         }
+        .navigationViewStyle(.stack)
     }
 }

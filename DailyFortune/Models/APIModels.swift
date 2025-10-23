@@ -144,7 +144,18 @@ struct FortuneDrawResponse: Codable {
 }
 
 struct FortuneHistoryItem: Codable, Identifiable {
-    var id: String { createdAt.ISO8601Format() }
+    // --- FIX START: Use ISO8601DateFormatter for backwards compatibility with iOS 14 ---
+    // The .ISO8601Format() method is only available on iOS 15+.
+    private static let idFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        // Ensure fractional seconds are included for uniqueness, matching server format.
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    var id: String { FortuneHistoryItem.idFormatter.string(from: createdAt) }
+    // --- FIX END ---
+    
     let createdAt: Date
     let value: String
     

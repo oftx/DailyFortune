@@ -45,12 +45,8 @@ final class SettingsViewModel: ObservableObject {
         
         Task {
             do {
-                // --- FIX START ---
-                // 调用返回 MyProfileResponse 的 updateMyProfile
                 let response = try await APIService.shared.updateMyProfile(payload: payload)
-                // 从响应中提取 user 对象并更新 AuthManager
                 authManager.updateUser(response.user)
-                // --- FIX END ---
                 self.successMessage = "设置已成功保存！"
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -66,19 +62,28 @@ struct SettingsView: View {
     @State private var isChangePasswordSheetPresented = false
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section(header: Text("个人资料")) {
                     TextField("显示名称", text: $viewModel.displayName)
-                    TextField("个人简介", text: $viewModel.bio, axis: .vertical)
+                    // --- FIX START: Replace iOS 16 vertical axis TextField ---
+                    TextField("个人简介", text: $viewModel.bio)
+                    // --- FIX END ---
                     TextField("头像图片链接", text: $viewModel.avatarUrl).keyboardType(.URL)
                     TextField("主页背景图片链接", text: $viewModel.backgroundUrl).keyboardType(.URL)
-                    LabeledContent("用户ID") {
+                    
+                    // --- FIX START: Replace iOS 16 LabeledContent ---
+                    HStack {
+                        Text("用户ID")
+                        Spacer()
                         Text(authManager.currentUser?.username ?? "").foregroundColor(.secondary)
                     }
-                    LabeledContent("电子邮箱") {
+                    HStack {
+                        Text("电子邮箱")
+                        Spacer()
                         Text(authManager.currentUser?.email ?? "").foregroundColor(.secondary)
                     }
+                    // --- FIX END ---
                 }
                 
                 Section(header: Text("QQ设置"), footer: Text("重要提示：启用后，您的QQ号将包含在公开的头像链接中，并对他人可见。")) {
@@ -112,11 +117,15 @@ struct SettingsView: View {
                     Text(message).foregroundColor(.red)
                 }
                 
-                // Logout Button
                 Section {
-                    Button("登出", role: .destructive) {
+                    // --- FIX START: Replace iOS 15 Button with role ---
+                    Button(action: {
                         authManager.logout()
+                    }) {
+                        Text("登出")
+                            .foregroundColor(.red)
                     }
+                    // --- FIX END ---
                 }
             }
             .navigationTitle("设置")
@@ -143,5 +152,6 @@ struct SettingsView: View {
                 ChangePasswordView()
             }
         }
+        .navigationViewStyle(.stack)
     }
 }

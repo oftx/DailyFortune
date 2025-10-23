@@ -22,11 +22,16 @@ struct LoginPromptView: View {
             Button("登录 / 注册") {
                 isShowingLoginSheet.toggle()
             }
-            .buttonStyle(.borderedProminent)
+            // --- FIX START: Replace .borderedProminent for iOS 14 ---
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(Color.accentColor)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            // --- FIX END ---
             .padding()
         }
         .sheet(isPresented: $isShowingLoginSheet) {
-            // 在模态视图中呈现登录页
             LoginView()
         }
     }

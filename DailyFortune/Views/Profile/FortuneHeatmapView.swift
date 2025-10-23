@@ -38,19 +38,16 @@ struct FortuneHeatmapView: View {
                     }
                 }
                 .padding()
-                // --- FIX START: 将 ID 应用于整个带边距的 HStack ---
                 .id("heatmap_content")
-                // --- FIX END ---
             }
             .onAppear {
-                // --- FIX START: 滚动到容器视图的 ID，而不是最后一列 ---
-                // 这样可以确保包含 trailing padding 在内的整个内容都滚动到末尾。
                 proxy.scrollTo("heatmap_content", anchor: .trailing)
-                // --- FIX END ---
             }
         }
         .frame(height: 15 * 7 + 2 * 6 + 30) // 15*7 for cells, 2*6 for spacing, 30 for padding
-        .background(.thinMaterial)
+        // --- FIX START: Replace .thinMaterial for iOS 14 ---
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        // --- FIX END ---
         .cornerRadius(10)
     }
 
