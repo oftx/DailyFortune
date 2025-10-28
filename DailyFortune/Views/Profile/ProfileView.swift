@@ -1,5 +1,5 @@
 import SwiftUI
-import Kingfisher
+import SDWebImageSwiftUI
 import Combine
 
 @MainActor
@@ -131,7 +131,6 @@ struct ProfileView: View {
 }
 
 
-// ProfileContentView remains unchanged, except for one line in headerView
 struct ProfileContentView: View {
     let profile: UserPublicProfile
     let history: [FortuneHistoryItem]
@@ -154,19 +153,19 @@ struct ProfileContentView: View {
     
     private var headerView: some View {
         ZStack {
-            // --- FIX START: 修改占位符背景色以匹配主题 ---
-            KFImage(URL(string: profile.backgroundUrl))
-                .placeholder{
-                    // 使用 .systemBackground，它在亮色模式下为白色，暗色模式下为深色
-                    Rectangle().fill(Color(uiColor: .systemBackground))
-                }
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(height: headerHeight)
-                .clipped()
-            // --- FIX END ---
-            
-            // 只有当有背景图时，才添加遮罩层
+            // --- 修正 1: 使用正确的 WebImage 闭包语法 ---
+            WebImage(url: URL(string: profile.backgroundUrl)) { image in
+                // 对成功加载的图片应用修饰符
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                // 定义占位符视图
+                Rectangle().fill(Color(uiColor: .systemBackground))
+            }
+            .frame(height: headerHeight) // 对整个 WebImage 容器应用修饰符
+            .clipped()
+
             if !profile.backgroundUrl.isEmpty {
                 Rectangle()
                     .fill(.black.opacity(0.4))
@@ -176,15 +175,22 @@ struct ProfileContentView: View {
                 Spacer()
                 HStack(alignment: .bottom, spacing: 16) {
                     if let avatarUrl = profile.getDisplayAvatarUrl() {
-                        KFImage(avatarUrl)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 90, height: 90)
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(Color.white, lineWidth: 3)
-                            }
+                        // --- 修正 2: 对头像图片也使用正确的 WebImage 语法 ---
+                        WebImage(url: avatarUrl) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            // 为头像添加一个合适的占位符
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemBackground))
+                        }
+                        .frame(width: 90, height: 90) // 尺寸修饰符应用于 WebImage 容器
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.white, lineWidth: 3)
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
