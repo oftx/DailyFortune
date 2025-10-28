@@ -3,8 +3,6 @@ import SwiftUI
 struct Constants {
     struct FortuneColors {
         
-        // --- FIX START: 更新颜色以匹配Web前端，并为暗色模式做准备 ---
-        // 1. 我们将基础颜色存储为 UIColor，因为它更便于进行亮度/饱和度计算。
         private static let uiColors: [String: UIColor] = [
             "諭吉": UIColor(hex: "#eec54b"),
             "大吉": UIColor(hex: "#C73E3A"),
@@ -15,18 +13,13 @@ struct Constants {
             "大凶": UIColor(hex: "#1A297E")
         ]
         
-        /// 返回一个能自动适应亮/暗模式的动态颜色。
-        /// 在暗色模式下，颜色会自动变暗。
         static func color(for fortune: String?) -> Color {
             guard let fortune = fortune, let baseColor = uiColors[fortune] else {
                 return .gray
             }
             
-            // 2. 创建一个动态的 UIColor。
-            // SwiftUI 会在界面模式切换时自动重新调用这个闭包。
             let dynamicColor = UIColor { (traitCollection) -> UIColor in
                 if traitCollection.userInterfaceStyle == .dark {
-                    // 3. 在暗色模式下，降低亮度和饱和度以获得更好的视觉效果。
                     var hue: CGFloat = 0
                     var saturation: CGFloat = 0
                     var brightness: CGFloat = 0
@@ -34,25 +27,22 @@ struct Constants {
                     
                     baseColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
                     
-                    // 降低亮度和饱和度的系数可以根据视觉效果微调
                     let darkBrightness = brightness * 0.7
                     let darkSaturation = saturation * 0.9
                     
                     return UIColor(hue: hue, saturation: darkSaturation, brightness: darkBrightness, alpha: alpha)
                 } else {
-                    // 4. 在亮色模式下，返回原始颜色。
                     return baseColor
                 }
             }
             
-            // 5. 将动态的 UIColor 转换为 SwiftUI 的 Color。
             return Color(dynamicColor)
         }
-        // --- FIX END ---
     }
     
-    // 热力图颜色保持不变
+    // --- 热力图颜色修改开始 ---
     struct Heatmap {
+        // 等级映射保持不变
         static let colorLevels: [String: Int] = [
             "大凶": 1,
             "凶": 2,
@@ -63,17 +53,61 @@ struct Constants {
             "諭吉": 7,
         ]
         
-        static let colorScale: [Color] = [
-            Color(uiColor: .systemGray5), // Level 0 (no data)
-            Color(red: 0.6, green: 0, blue: 0), // 大凶
-            Color(red: 0.8, green: 0.2, blue: 0.2), // 凶
-            Color(red: 0.9, green: 0.9, blue: 0.4), // 小吉
-            Color(red: 0.6, green: 0.9, blue: 0.6), // 中吉
-            Color(red: 0.4, green: 0.8, blue: 0.4), // 吉
-            Color(red: 0.2, green: 0.7, blue: 0.2), // 大吉
-            Color(red: 1.0, green: 0.84, blue: 0)   // 諭吉 (Gold)
+        // --- 变化 1: 定义亮色模式下的颜色数组 (来自 CSS .react-calendar-heatmap) ---
+        // Level 0 (无数据) 我们继续使用自适应的 systemGray5
+        private static let lightColorHex: [String] = [
+            "",      // Level 0 placeholder
+            "#d32f2f", // Level 1 (大凶)
+            "#e57373", // Level 2 (凶)
+            "#aceebb", // Level 3 (小吉)
+            "#78d593", // Level 4 (中吉)
+            "#4ac26b", // Level 5 (吉)
+            "#2da44e", // Level 6 (大吉)
+            "#116329", // Level 7 (諭吉)
         ]
+
+        // --- 变化 2: 定义暗色模式下的颜色数组 (来自 CSS body[data-theme='dark']) ---
+        private static let darkColorHex: [String] = [
+            "",      // Level 0 placeholder
+            "#ef9a9a", // Level 1
+            "#e57373", // Level 2
+            "#033a16", // Level 3
+            "#196c2e", // Level 4
+            "#2ea043", // Level 5
+            "#42bb53", // Level 6
+            "#56d364", // Level 7
+        ]
+        
+        // --- 变化 3: 将 colorScale 从静态 let 数组改为动态计算 var 属性 ---
+        static var colorScale: [Color] {
+            // 使用 map 遍历 0-7 共 8 个等级来创建动态颜色数组
+            return (0...7).map { level in
+                // Level 0 (无数据) 的颜色保持不变
+                if level == 0 {
+                    return Color(uiColor: .systemGray5)
+                }
+                
+                // 从Hex颜色数组中获取对应等级的颜色值
+                let lightHex = lightColorHex[level]
+                let darkHex = darkColorHex[level]
+                
+                // 创建一个动态 UIColor，它会根据系统模式自动选择颜色
+                let dynamicColor = UIColor { (traitCollection) -> UIColor in
+                    if traitCollection.userInterfaceStyle == .dark {
+                        // 暗色模式
+                        return UIColor(hex: darkHex)
+                    } else {
+                        // 亮色模式
+                        return UIColor(hex: lightHex)
+                    }
+                }
+                
+                // 将动态 UIColor 转换为 SwiftUI Color
+                return Color(dynamicColor)
+            }
+        }
     }
+    // --- 热力图颜色修改结束 ---
     
     static let timezones: [String] = [
       "UTC",
@@ -88,8 +122,8 @@ struct Constants {
 }
 
 // MARK: - Color/UIColor Hex Initializer Extensions
+// (这部分扩展代码无需任何修改)
 
-// --- FIX: 为 UIColor 添加 hex 初始化方法 ---
 extension UIColor {
     convenience init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
