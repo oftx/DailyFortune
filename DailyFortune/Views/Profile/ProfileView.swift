@@ -153,17 +153,15 @@ struct ProfileContentView: View {
     
     private var headerView: some View {
         ZStack {
-            // --- 修正 1: 使用正确的 WebImage 闭包语法 ---
-            WebImage(url: URL(string: profile.backgroundUrl)) { image in
-                // 对成功加载的图片应用修饰符
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                // 定义占位符视图
+            // --- 最终修正 1: 使用正确的 AnimatedImage 初始化器 ---
+            // 正确语法: AnimatedImage(url: ..., placeholder: { ... })
+            AnimatedImage(url: URL(string: profile.backgroundUrl), placeholder: {
                 Rectangle().fill(Color(uiColor: .systemBackground))
-            }
-            .frame(height: headerHeight) // 对整个 WebImage 容器应用修饰符
+            })
+            // 所有处理图像内容的修改器都链接在后面
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(height: headerHeight)
             .clipped()
 
             if !profile.backgroundUrl.isEmpty {
@@ -175,17 +173,14 @@ struct ProfileContentView: View {
                 Spacer()
                 HStack(alignment: .bottom, spacing: 16) {
                     if let avatarUrl = profile.getDisplayAvatarUrl() {
-                        // --- 修正 2: 对头像图片也使用正确的 WebImage 语法 ---
-                        WebImage(url: avatarUrl) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            // 为头像添加一个合适的占位符
+                        // --- 最终修正 2: 对头像也使用完全相同的正确语法 ---
+                        AnimatedImage(url: avatarUrl, placeholder: {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(Color(uiColor: .secondarySystemBackground))
-                        }
-                        .frame(width: 90, height: 90) // 尺寸修饰符应用于 WebImage 容器
+                        })
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 90, height: 90)
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
